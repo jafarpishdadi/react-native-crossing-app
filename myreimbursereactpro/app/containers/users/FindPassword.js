@@ -25,6 +25,7 @@ import CommonLoading from '../../containers/common/CommonLoading';
 import {back} from '../../redux/actions/navigator/Navigator';
 import Header from "./../common/CommonHeader";
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 class FindPassword extends Component {
 
@@ -235,102 +236,104 @@ class FindPassword extends Component {
 	render() {
 		const dismissKeyboard = require('dismissKeyboard');
 		return(
-			<TouchableWithoutFeedback onPress={dismissKeyboard}>
-				<View style={styles.container}>
-					<Header
-						titleText={Message.FIND_PASSWORD}
-						thisComponent={this}
-						backClick={this.onBack}
-					/>
-					<Dialog
-						content={Message.FIND_PASSWORD_CHECK_EMPTY_DATA_MESSAGE}
-						type={'alert'}
-						alertBtnText={Message.CONFIRM}
-						modalVisible={this.props.state.showDialog1}
-						alertBtnStyle={{color: '#FFAA00',}}
-						onClose={this._closeModal1}
-						alertBtnClick={this._closeModal1}
-						thisComponent={this}
-					/>
-					<Dialog
-						content={Message.FIND_PASSWORD_CHECK_PHONE_NUMBER}
-						type={'alert'}
-						alertBtnText={Message.CONFIRM}
-						modalVisible={this.props.state.showDialog2}
-						alertBtnStyle={{color: '#FFAA00',}}
-						onClose={this._closeModal2}
-						alertBtnClick={this._closeModal2}
-						thisComponent={this}
-					/>
-					<Dialog
-						content={Message.FIND_PASSWORD_CHECK_CODE_NUMBER}
-						type={'alert'}
-						alertBtnText={Message.CONFIRM}
-						modalVisible={this.props.state.showDialog3}
-						alertBtnStyle={{color: '#FFAA00',}}
-						onClose={this._closeModal3}
-						alertBtnClick={this._closeModal3}
-						thisComponent={this}
-					/>
-					<CommonLoading isShow={this.props.state.isLoading}/>
-					<View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-						<View style={styles.inputRow}>
-							<Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
-							<TextInput
-								style={styles.inputText}
-								placeholder={Message.REGISTER_INPUT_PHONE}
-								maxLength={11}
-								placeholderTextColor="#ABABAB"
-								underlineColorAndroid="transparent"
-								ref="phone"
-								selectionColor="#FFAA00"
-								keyboardType="numeric"
-								value={this.props.state.findPasswordPhone}
-								onChangeText={(text) => {this.props.changeState({findPasswordPhone: text})}}
-								returnKeyType={'done'}/>
+			<SafeAreaView style={styles.container}>
+				<TouchableWithoutFeedback onPress={dismissKeyboard}>
+					<View style={styles.container}>
+						<Header
+							titleText={Message.FIND_PASSWORD}
+							thisComponent={this}
+							backClick={this.onBack}
+						/>
+						<Dialog
+							content={Message.FIND_PASSWORD_CHECK_EMPTY_DATA_MESSAGE}
+							type={'alert'}
+							alertBtnText={Message.CONFIRM}
+							modalVisible={this.props.state.showDialog1}
+							alertBtnStyle={{color: '#FFAA00',}}
+							onClose={this._closeModal1}
+							alertBtnClick={this._closeModal1}
+							thisComponent={this}
+						/>
+						<Dialog
+							content={Message.FIND_PASSWORD_CHECK_PHONE_NUMBER}
+							type={'alert'}
+							alertBtnText={Message.CONFIRM}
+							modalVisible={this.props.state.showDialog2}
+							alertBtnStyle={{color: '#FFAA00',}}
+							onClose={this._closeModal2}
+							alertBtnClick={this._closeModal2}
+							thisComponent={this}
+						/>
+						<Dialog
+							content={Message.FIND_PASSWORD_CHECK_CODE_NUMBER}
+							type={'alert'}
+							alertBtnText={Message.CONFIRM}
+							modalVisible={this.props.state.showDialog3}
+							alertBtnStyle={{color: '#FFAA00',}}
+							onClose={this._closeModal3}
+							alertBtnClick={this._closeModal3}
+							thisComponent={this}
+						/>
+						<CommonLoading isShow={this.props.state.isLoading}/>
+						<View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+							<View style={styles.inputRow}>
+								<Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
+								<TextInput
+									style={styles.inputText}
+									placeholder={Message.REGISTER_INPUT_PHONE}
+									maxLength={11}
+									placeholderTextColor="#ABABAB"
+									underlineColorAndroid="transparent"
+									ref="phone"
+									selectionColor="#FFAA00"
+									keyboardType="numeric"
+									value={this.props.state.findPasswordPhone}
+									onChangeText={(text) => {this.props.changeState({findPasswordPhone: text})}}
+									returnKeyType={'done'}/>
+							</View>
+							<View style={CustomStyles.separatorLine}/>
+							<View style={styles.inputRow}>
+								<Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
+								<TextInput
+									style={styles.inputText}
+									placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
+									maxLength={6}
+									placeholderTextColor="#ABABAB"
+									underlineColorAndroid="transparent"
+									ref="code"
+									selectionColor="#FFAA00"
+									keyboardType="numeric"
+									value={this.props.state.findPasswordVerificationCode}
+									onChangeText={(text) => {this.props.changeState({findPasswordVerificationCode: text})}}
+									returnKeyType={'done'}/>
+								<TouchableOpacity disabled={this.props.state.btnDisable} onPress={() => {
+									this.sendValidationCode();
+								}}>
+									<View style={this._choose_code_View1_style()}>
+										<Text style={this._choose_ver_code_style()}>{this.props.state.text}</Text>
+									</View>
+								</TouchableOpacity>
+							</View>
+							<View style={CustomStyles.separatorLine}/>
 						</View>
-						<View style={CustomStyles.separatorLine}/>
-						<View style={styles.inputRow}>
-							<Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
-							<TextInput
-								style={styles.inputText}
-								placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
-								maxLength={6}
-								placeholderTextColor="#ABABAB"
-								underlineColorAndroid="transparent"
-								ref="code"
-								selectionColor="#FFAA00"
-								keyboardType="numeric"
-								value={this.props.state.findPasswordVerificationCode}
-								onChangeText={(text) => {this.props.changeState({findPasswordVerificationCode: text})}}
-								returnKeyType={'done'}/>
-							<TouchableOpacity disabled={this.props.state.btnDisable} onPress={() => {
-								this.sendValidationCode();
-							}}>
-								<View style={this._choose_code_View1_style()}>
-									<Text style={this._choose_ver_code_style()}>{this.props.state.text}</Text>
-								</View>
-							</TouchableOpacity>
-						</View>
-						<View style={CustomStyles.separatorLine}/>
-					</View>
-					<TouchableOpacity
-						style={{
-							marginTop: ScreenUtil.scaleSize(180),
-						}}
-						onPress={() => {
-							this.checkData();
-						}}>
-						<Image source={require('../../img/common/next.png')}
+						<TouchableOpacity
 							style={{
-								height: ScreenUtil.scaleSize(75),
-								width: ScreenUtil.scaleSize(550),
-								resizeMode: 'stretch',
-								alignSelf: 'center',
-							}}/>
-					</TouchableOpacity>
-				</View>
-			</TouchableWithoutFeedback>
+								marginTop: ScreenUtil.scaleSize(180),
+							}}
+							onPress={() => {
+								this.checkData();
+							}}>
+							<Image source={require('../../img/common/next.png')}
+								style={{
+									height: ScreenUtil.scaleSize(75),
+									width: ScreenUtil.scaleSize(550),
+									resizeMode: 'stretch',
+									alignSelf: 'center',
+								}}/>
+						</TouchableOpacity>
+					</View>
+				</TouchableWithoutFeedback>
+			</SafeAreaView>
 		)
 	}
 }

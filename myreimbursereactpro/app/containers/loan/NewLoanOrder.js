@@ -1,6 +1,5 @@
 import React, {Component} from "react";
-import {changeState, uploadAttachment, loadData, initData} from "../../redux/actions/loan/NewLoanOrder";
-import {back} from "../../redux/actions/navigator/Navigator";
+import {back, navigateSelectCopyPerson} from "../../redux/actions/navigator/Navigator";
 import {connect} from "react-redux";
 import {bindActionCreators} from "redux";
 import {
@@ -22,7 +21,15 @@ import Header from "../../containers/common/CommonHeader";
 import Picker from "react-native-picker";
 import Permissions from "react-native-permissions";
 import {
-    recogniseVoiceRecord
+    recogniseVoiceRecord,
+    changeState,
+    uploadAttachment,
+    loadData,
+    initData,
+    saveLoan,
+    submitLoan,
+    resaveLoan,
+    resubmitLoan,
 } from "../../redux/actions/loan/NewLoanOrder";
 import CommonLoading from "../../containers/common/CommonLoading";
 import API from "../../utils/API";
@@ -30,6 +37,8 @@ import Dialog from "./../common/Dialog";
 import Store from "react-native-simple-store";
 import {CustomStyles} from '../../css/CustomStyles';
 import BackDialog from "./../common/BackDialog";
+import SafeAreaView from "react-native-safe-area-view";
+import Base64Images from "../../utils/Base64Images";
 
 var RNBridgeModule = NativeModules.RNBridgeModule;
 const pickerConfirmBtnColor = [255, 170, 0, 1];
@@ -55,18 +64,25 @@ class NewLoanOrder extends Component {
 
     componentDidMount() {
         const that = this;
+        Store.get('token').then((tokenStr) => {
+            if (tokenStr) {
+                that.props.changeState({
+                    token: tokenStr
+                })
+            }
+        })
         Store.get('user').then((user) => {
             if (user) {
                 if (Util.checkIsEmptyString(that.props.state.departmentName) ||
                     Util.checkIsEmptyString(that.props.state.departmentId)) {
                     that.props.changeState({
-                        expenseDepartmentName: user.orgDepName,
-                        expenseDepartmentId: user.orgDepId,
+                        departmentName: user.orgDepName,
+                        departmentId: user.orgDepId,
                     })
                 }
             }
         });
-        this.props.loadData();
+        this.props.loadData(this.props.navigation.state.params);
     }
 
     /**
@@ -125,6 +141,16 @@ class NewLoanOrder extends Component {
     }
 
     /**
+     * 获取光标位置
+     */
+    getSelectIndex(event, inputStr) {
+        this.props.changeState({
+            selectionStart: Util.checkIsEmptyString(event.nativeEvent.selection.start) ? inputStr.length : event.nativeEvent.selection.start,
+            selectionEnd: Util.checkIsEmptyString(event.nativeEvent.selection.end) ? inputStr.length : event.nativeEvent.selection.end,
+        });
+    }
+
+    /**
      * 部门选择器
      */
     createDepartmentPicker() {
@@ -161,7 +187,7 @@ class NewLoanOrder extends Component {
                 });
                 this.props.changeState({
                     departmentName: departmentStr,
-                    LoanDepartmentId: organizationDetail.id,
+                    departmentId: organizationDetail.id,
                     showPickerShadow: false
                 })
             },
@@ -176,7 +202,9 @@ class NewLoanOrder extends Component {
     /**
      * 录音开始
      */
-    startRecord(type,expenseId) {
+    startRecord(type) {
+        const dismissKeyboard = require('dismissKeyboard');
+        dismissKeyboard();
         Permissions.checkMultiplePermissions(['microphone']).then(response => {
             // Response is one of: 'authorized', 'denied', 'restricted', or 'undetermined'
             if ((response.microphone != 'authorized' && response.microphone != 'undetermined')) {
@@ -194,16 +222,15 @@ class NewLoanOrder extends Component {
                 isVoice:true
             });
             VoiceRecordModule.start();
-            this._onCountTime(type, expenseId);
+            this._onCountTime(type);
         })
     }
 
     /**
      * 录音结束，松开按钮
-     * @param type 0:报销事由  1:费用说明
-     * @param expenseId 费用明细id 当type为1的时候需要
+     * @param type 0:借款事由  1:备注
      */
-    endRecord(type,expenseId) {
+    endRecord(type) {
         var dateNow = (new Date()).valueOf();
         if (lastRecordPressed && lastRecordPressed + 300 > dateNow) {
             this.props.changeState({
@@ -219,7 +246,31 @@ class NewLoanOrder extends Component {
                 isRecording: false,
             });
             VoiceRecordModule.stop((recordData)=> {
-                this.props.recogniseVoiceRecord(type,expenseId,{voice:recordData.recordData,length:recordData.recordData.length})
+                this.props.recogniseVoiceRecord({voice:recordData.recordData,length:recordData.recordData.length}, (data) => {
+                    if (type == 0) {
+                        let expenseDesc = this.props.state.LoanReason.substring(0, this.props.state.selectionStart)
+                            + data
+                            + this.props.state.LoanReason.substring(this.props.state.selectionEnd, this.props.state.LoanReason.length);
+
+                        if (expenseDesc.length > 300) {
+                            expenseDesc = expenseDesc.substring(0, 300);
+                        }
+                        this.props.changeState({
+                            LoanReason: expenseDesc
+                        })
+                    } else if (type == 1) {
+                        let expenseDesc = this.props.state.remarks.substring(0, this.props.state.selectionStart)
+                            + data
+                            + this.props.state.remarks.substring(this.props.state.selectionEnd, this.props.state.remarks.length);
+
+                        if (expenseDesc.length > 300) {
+                            expenseDesc = expenseDesc.substring(0, 300);
+                        }
+                        this.props.changeState({
+                            remarks: expenseDesc
+                        })
+                    }
+                })
                 //console.log(recordPath);
             });
 
@@ -232,7 +283,7 @@ class NewLoanOrder extends Component {
      * 语音倒计时
      * @private
      */
-    _onCountTime(type,expenseId) {
+    _onCountTime(type) {
         var that = this;
 
         //设置定时器，倒数60秒
@@ -244,7 +295,7 @@ class NewLoanOrder extends Component {
                 that.props.changeState({
                     timeEnd: true,
                 });
-                that.endTimeRecord(type,expenseId);
+                that.endTimeRecord(type);
             } else {
                 that.props.changeState({
                     timeCount: timer,
@@ -256,10 +307,9 @@ class NewLoanOrder extends Component {
 
     /**
      * 录音结束，时间结束
-     * @param type 0:报销事由  1:费用说明
-     * @param expenseId 费用明细id 当type为1的时候需要
+     * @param type 0:借款事由  1:备注
      */
-    endTimeRecord(type,expenseId) {
+    endTimeRecord(type) {
         this.props.changeState({
             isRecording: false,
         });
@@ -274,7 +324,25 @@ class NewLoanOrder extends Component {
             return;
         }
         VoiceRecordModule.stop((recordData)=> {
-            this.props.recogniseVoiceRecord(type,expenseId,{voice:recordData.recordData,length:recordData.recordData.length})
+            this.props.recogniseVoiceRecord({voice:recordData.recordData, length:recordData.recordData.length}, (data) => {
+                if (type == 0) {
+                    let expenseDesc = this.props.state.LoanReason + data;
+                    if (expenseDesc.length > 300) {
+                        expenseDesc = text.substring(0, 300);
+                    }
+                    this.props.changeState({
+                        LoanReason: expenseDesc
+                    })
+                } else if (type == 1) {
+                    let expenseDesc = this.props.state.remarks + data;
+                    if (expenseDesc.length > 300) {
+                        expenseDesc = text.substring(0, 300);
+                    }
+                    this.props.changeState({
+                        remarks: expenseDesc
+                    })
+                }
+            })
             //console.log(recordPath);
         });
 
@@ -299,10 +367,25 @@ class NewLoanOrder extends Component {
      * @param loanAmount
      */
     updateLoanAmount(loanAmount) {
+
+        const arr = loanAmount.split('.');
+
         //判断输入是否是数字
-        if (!Util.checkFloatNumber2(loanAmount)) {
+        if (!Util.checkFloatNumber(loanAmount)) {
+            Util.showToast(Message.NEW_LOAN_OVER_ZERO_AMOUNT);
             return;
         }
+
+        //整数最大7位
+        if (parseFloat(loanAmount) >= 10000000) {
+            return;
+        }
+
+        //最多2位小数
+        if (arr.length == 2 && arr[1].length > 2) {
+            return;
+        }
+
         this.props.changeState({
             loanAmount: loanAmount,
         })
@@ -320,7 +403,7 @@ class NewLoanOrder extends Component {
      * 渲染单个附件
      * @param item  附件数据
      */
-    renderAttachItem(item) {
+    renderAttachItem(item,index) {
         var fileTypeIcon;
         switch (item.fileType.toLowerCase()) {
             case 'docx':
@@ -359,7 +442,12 @@ class NewLoanOrder extends Component {
         return (
             <View style={styles.deleteIconTouchView}>
                 <TouchableOpacity style={styles.deleteIconTouchAttach} onPress={() => {
-
+                    //todo
+                    var attachmentList = this.props.state.attachmentList;
+                    attachmentList.splice(index,1)
+                    this.props.changeState({
+                        attachmentList: attachmentList,
+                    })
                 }}>
                     <Image source={require('./../../img/common/delete.png')}
                            style={styles.deleteIcon}/>
@@ -411,7 +499,7 @@ class NewLoanOrder extends Component {
      * @private
      */
     _ensureSaveClick() {
-        //todo
+        this.submit(0);
     }
 
     /**
@@ -419,25 +507,150 @@ class NewLoanOrder extends Component {
      */
     checkData() {
         if (!this.props.state.loanAmount) {
-            Util.showToast(Message.NEW_INVOICE_AMOUNT_PLACEHOLDER);
-            return;
+            Util.showToast(Message.NEW_LOAN_AMOUNT_PLACEHOLDER);
+            return false;
         }
-        this.submit();
+        return true;
     }
 
     /**
-     * 提交借款单
-     * @returns {XML}
+     * 提交or保存借款单
      */
-    submit() {
-        //todo
+    submit(type) {
+        Picker.hide();
+        const dismissKeyboard = require('dismissKeyboard');
+        dismissKeyboard();
+        const state = this.props.state;
+        const data = {
+            borrowDid: state.departmentId,
+            borrowDname: state.departmentName,
+            borrowDesc: state.LoanReason,
+            borrowAmount: state.loanAmount,
+            borrowRemark: state.remarks,
+            ccUid: state.copyPersonList.length == 0 ? '' : state.copyPersonList[0].userNo,
+            ccName: state.copyPersonList.length == 0 ? '' : state.copyPersonList[0].userName,
+            bizExpenseAttachmentList: state.attachmentList,
+        };
+        if (this.props.state.source == 'LoanOrderDetail' && !Util.checkIsEmptyString(this.props.state.borrowNo)) {
+            if (this.props.state.applyStatus === '1' || this.props.state.applyStatus === '2') {
+                if (type == 0) {
+                    this.props.saveLoan(data);
+                } else {
+                    if (this.checkData()) {
+                        this.props.submitLoan(data);
+                    }
+                }
+            } else {
+                data.borrowNo = this.props.state.borrowNo;
+                //编辑
+                if (type == 0) {
+                    this.props.resaveLoan(data);
+                } else {
+                    if (this.checkData()) {
+                        this.props.resubmitLoan(data);
+                    }
+                }
+            }
+        } else {
+            if (type == 0) {
+                this.props.saveLoan(data);
+            } else {
+                if (this.checkData()) {
+                    this.props.submitLoan(data);
+                }
+            }
+        }
+    }
+
+    //渲染抄送人
+    renderCopyPerson() {
+        var personList = this.props.state.copyPersonList;
+        var personValue = "";
+        if (!Util.checkListIsEmpty(personList)) {
+            for (var i = 0, j = personList.length; i < j; i++) {
+                if (i < j - 1) {
+                    personValue += personList[i].userName + "、";
+                }
+
+                if (i == j - 1) {
+                    personValue += personList[i].userName;
+                }
+            }
+            return personValue;
+        } else {
+            return "";
+        }
+
+    }
+
+    /**
+     * 打开图片选择器
+     */
+    openImagePicker() {
+        Permissions.checkMultiplePermissions(['camera', 'photo'])
+            .then(response => {
+
+                //判断是否具有相机权限，相册权限
+                if (!Util.checkPermission(response.camera) || !Util.checkPermission(response.photo)) {
+                    this.props.changeState({
+                        dialogTitle: Message.AUTHORITY_SETTING,
+                        dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
+                        showNoPermissionDialog: true,
+                    });
+                    return;
+                }
+
+                var ImagePicker = require('react-native-image-picker');
+
+                //选择器的配置
+                var options = {
+                    title: Message.CHOOSE_PHOTO,
+                    cancelButtonTitle: Message.CANCEL,
+                    takePhotoButtonTitle: Message.TAKE_PHOTO,
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                    quality: 0.6,
+                    allowsEditing: false,
+                    chooseFromLibraryButtonTitle: Message.CHOOSE_FROM_PHOTO_ALBUM,
+                };
+
+                /**
+                 * The first arg is the options object for customization (it can also be null or omitted for default options),
+                 * The second arg is the callback which sends object: response (more info below in README)
+                 */
+                ImagePicker.showImagePicker(options, (response) => {
+                    if (response.didCancel) {
+                        //点击取消按钮触发的操作
+                    }
+                    else if (response.error) {
+                        //选则照片出错触发的操作
+                    }
+                    else if (response.customButton) {
+                        //选择了常用按钮
+                    }
+                    else {
+                        if (response.fileSize > 10 * 1024 * 1000) {
+                            Util.showToast(Message.NEW_RE_FILE_MAX);
+                            return;
+                        }
+                        const source = {
+                            uri: response.uri,
+                            fileName: response.fileName,
+                            fileSize: response.fileSize,
+                            fileType: response.type,
+                            isStatic: true
+                        };
+                        this.props.uploadAttachment(this.props.state.attachmentList, source);
+                    }
+                });
+            });
     }
 
     render(){
         const dismissKeyboard = require('dismissKeyboard');
         return(
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+                <SafeAreaView style={styles.container}>
                     <CommonLoading isShow={this.props.state.isLoading}/>
                     <Dialog
                         content={Message.NEW_LOAN_BACK_MSG}
@@ -475,11 +688,11 @@ class NewLoanOrder extends Component {
                             }
                         }/>
                     <Header
-                        titleText= {Message.NEW_LOAN_TITLE}
+                        titleText= {this.props.state.source == 'LoanOrderDetail' ? Message.EDIT_LOAN_TITLE : Message.NEW_LOAN_TITLE}
                         thisComponent={this}
                         backClick={this.onBack}
                         rightText={Message.SAVE}
-                        rightClick={this._ensureSaveClick.bind(this)}
+                        rightClick={this.submit.bind(this, 0)}
                         rightTextStyle={{
                             fontSize: ScreenUtil.setSpText(9),
                             color: '#FFAA00',
@@ -492,9 +705,8 @@ class NewLoanOrder extends Component {
                     {this.props.state.isRecording === true ? (
                         <View style={styles.recordingView}>
                             <View style={styles.recordingRow}>
-                                <Image source={require('./../../img/reimbursement/microPhone.png')}
+                                <Image source={{uri:Base64Images.VOICE}}
                                        style={styles.microPhoneIcon}/>
-                                <View style={styles.recordingItem}/>
                             </View>
                             <Text style={{
                                 fontSize: ScreenUtil.setSpText(9),
@@ -541,8 +753,8 @@ class NewLoanOrder extends Component {
                                 }}>
                                     <Text style={styles.rowLabel}>{Message.NEW_LOAN_REASON}</Text>
                                     <View style={{
-                                        marginTop: ScreenUtil.scaleSize(20),
-                                        marginBottom: ScreenUtil.scaleSize(20),
+                                        marginTop: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 24 : 20),
+                                        marginBottom: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 16 : 20),
                                         width: ScreenUtil.scaleSize(360),
                                     }}>
                                         <TextInput
@@ -550,6 +762,7 @@ class NewLoanOrder extends Component {
                                             placeholder={Message.NEW_LOAN_REASON_PLACEHOLDER}
                                             placeholderTextColor="#ABABAB"
                                             underlineColorAndroid="transparent"
+                                            onSelectionChange={(event)=> this.getSelectIndex(event, this.props.state.LoanReason)}
                                             style={{
                                                 textAlign: 'left',
                                                 fontSize: ScreenUtil.setSpText(9),
@@ -579,8 +792,8 @@ class NewLoanOrder extends Component {
                                     }}
                                                       delayPressOut={200}
                                                       disabled={this.props.state.isVoice}
-                                                      onPressIn={this.startRecord.bind(this, 0, '')}
-                                                      onPressOut={this.endRecord.bind(this,0,'')}
+                                                      onPressIn={this.startRecord.bind(this, 0)}
+                                                      onPressOut={this.endRecord.bind(this,0)}
                                     >
                                         <Image source={require('../../img/reimbursement/voice.png')}
                                                style={{
@@ -595,7 +808,10 @@ class NewLoanOrder extends Component {
 
                             <TouchableWithoutFeedback onPress={dismissKeyboard}>
                                 <View style={styles.row}>
-                                    <Text style={styles.rowLabel}>{Message.NEW_LOAN_AMOUNT}</Text>
+                                    <Text style={styles.rowLabel}>{Message.NEW_LOAN_AMOUNT}<Text style={{
+                                        fontSize: ScreenUtil.setSpText(9),
+                                        color: 'red',
+                                    }}>*</Text></Text>
                                     <TextInput
                                         editable={true}
                                         style={styles.textInput}
@@ -622,8 +838,8 @@ class NewLoanOrder extends Component {
                                 }}>
                                     <Text style={styles.rowLabel}>{Message.NEW_LOAN_REMARK}</Text>
                                     <View style={{
-                                        marginTop: ScreenUtil.scaleSize(20),
-                                        marginBottom: ScreenUtil.scaleSize(20),
+                                        marginTop: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 24 : 20),
+                                        marginBottom: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 16 : 20),
                                         width: ScreenUtil.scaleSize(360),
                                     }}>
                                         <TextInput
@@ -631,6 +847,7 @@ class NewLoanOrder extends Component {
                                             placeholder={Message.NEW_LOAN_REMARK_PLACEHOLDER}
                                             placeholderTextColor="#ABABAB"
                                             underlineColorAndroid="transparent"
+                                            onSelectionChange={(event)=> this.getSelectIndex(event, this.props.state.remarks)}
                                             style={{
                                                 textAlign: 'left',
                                                 fontSize: ScreenUtil.setSpText(9),
@@ -650,6 +867,26 @@ class NewLoanOrder extends Component {
                                             onContentSizeChange={this._RemarksTextInputOnChange.bind(this)}
                                         />
                                     </View>
+                                    <TouchableOpacity style={{
+                                        flex: 1,
+                                        height: ScreenUtil.scaleSize(80),
+                                        justifyContent: 'center',
+                                        alignItems: 'flex-end',
+                                        marginRight: ScreenUtil.scaleSize(-30),
+                                        paddingRight: ScreenUtil.scaleSize(30),
+                                    }}
+                                                      delayPressOut={200}
+                                                      disabled={this.props.state.isVoice}
+                                                      onPressIn={this.startRecord.bind(this, 1)}
+                                                      onPressOut={this.endRecord.bind(this, 1)}
+                                    >
+                                        <Image source={require('../../img/reimbursement/voice.png')}
+                                               style={{
+                                                   width: ScreenUtil.scaleSize(19),
+                                                   height: ScreenUtil.scaleSize(30),
+                                                   resizeMode: 'stretch',
+                                               }}/>
+                                    </TouchableOpacity>
                                 </View>
                             </TouchableWithoutFeedback>
                         </View>
@@ -662,10 +899,13 @@ class NewLoanOrder extends Component {
                             }}>
                                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                                     <View style={styles.row}>
-                                        <Text style={[styles.textInput, {color: Platform.OS == 'ios' ? '#ABABAB' : '#666666'}]}>{Message.NEW_RE_ATTACHMENT}</Text>
+                                        <Text style={styles.textInput}>{Message.NEW_RE_ATTACHMENT}</Text>
                                         <TouchableOpacity onPress={() => {
-                                            if (Platform.OS != 'ios') {
-                                                if (this.props.state.attachmentList.length < 20) {
+                                            dismissKeyboard();
+                                            if (this.props.state.attachmentList.length < 20) {
+                                                if (Platform.OS == 'ios') {
+                                                    this.openImagePicker();
+                                                } else {
                                                     OpenFileSystemModule.openFileSystem().then((file) => {
                                                         if (!Util.contains(['doc', 'docx', 'ppt', 'pdf', 'xls', 'xlsx', 'png', 'img', 'jpg', 'bmp'], file.type)) {
                                                             Util.showToast(Message.NEW_RE_FILE_TYPE);
@@ -687,9 +927,9 @@ class NewLoanOrder extends Component {
                                                     }, (code, msg) => {
                                                         Util.showToast(Message.NEW_RE_GET_FILE_FAIL);
                                                     })
-                                                } else {
-                                                    Util.showToast(Message.NEW_RE_ATTACHMENT_MAX)
                                                 }
+                                            } else {
+                                                Util.showToast(Message.NEW_RE_ATTACHMENT_MAX)
                                             }
                                         }}>
                                             <View style={styles.rowImage}>
@@ -700,14 +940,26 @@ class NewLoanOrder extends Component {
                                     </View>
                                 </TouchableWithoutFeedback>
                                 <View style={styles.attachListView}>
-                                    {this.props.state.attachmentList.map((item) => this.renderAttachItem(item))}
+                                    {this.props.state.attachmentList.map((item,index) => this.renderAttachItem(item,index))}
                                 </View>
+
                                 <View style={CustomStyles.separatorLine}/>
 
                                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                                     <View style={styles.row}>
-                                        <Text style={styles.textInput}>{Message.NEW_TRAVEL_APPLY_COPY}</Text>
-                                        <TouchableOpacity onPress={() => {Util.showToast("该功能暂不支持,下个版本再试试吧")
+                                        <Text style={styles.rowLabel}>{Message.NEW_TRAVEL_APPLY_COPY}</Text>
+                                        <Text style={styles.textInput}>{this.renderCopyPerson()}</Text>
+                                        <TouchableOpacity onPress={() => {
+                                            dismissKeyboard();
+                                            this.props.navigateSelectCopyPerson({
+                                                code: 0,
+                                                selectedPersonList: this.props.state.copyPersonList,
+                                                callback: (item) => {
+                                                    this.props.changeState({
+                                                        copyPersonList: item
+                                                    })
+                                                }
+                                            })
                                         }}>
                                             <View style={styles.rowImage}>
                                                 <Image source={require('./../../img/reimbursement/add.png')}
@@ -718,32 +970,22 @@ class NewLoanOrder extends Component {
                                 </TouchableWithoutFeedback>
                             </View>
                         </TouchableWithoutFeedback>
-
-                        <TouchableOpacity
-                            style={{
-                                marginTop: ScreenUtil.scaleSize(180),
-                                alignSelf: 'center',
-                                marginBottom: ScreenUtil.scaleSize(120),
-                            }}
-                            onPress={() => {
-                                this.checkData();
-                            }}>
-                            <View style={{
-                                height: ScreenUtil.scaleSize(75),
-                                width: ScreenUtil.scaleSize(550),
-                                backgroundColor: '#FFAA00',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                borderRadius: ScreenUtil.scaleSize(8),
-                            }}>
-                                <Text style={{
-                                    color: '#FFFFFF',
-                                    fontSize: ScreenUtil.setSpText(9),
-                                }}>{Message.BUTTON_SUBMIT}</Text>
-                            </View>
-                        </TouchableOpacity>
+                        <View style={{height: ScreenUtil.scaleSize(Platform.OS === 'ios' ? 119 : 212)}}></View>
                     </InputScrollView>
-                </View>
+                    <View style={styles.bottomView}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                this.submit(1);
+                            }}>
+                            <Image source={require('../../img/common/commit.png')}
+                                style={{
+                                    width: ScreenUtil.scaleSize(550),
+                                    height: ScreenUtil.scaleSize(75),
+                                    resizeMode: 'contain',
+                                }}/>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
             </TouchableWithoutFeedback>)
     }
 
@@ -763,6 +1005,11 @@ function mapDispatchToProps(dispatch) {
         uploadAttachment: uploadAttachment,
         loadData: loadData,
         initData: initData,
+        navigateSelectCopyPerson: navigateSelectCopyPerson,
+        saveLoan: saveLoan,
+        submitLoan: submitLoan,
+        resaveLoan: resaveLoan,
+        resubmitLoan: resubmitLoan,
     }, dispatch);
 }
 
@@ -771,6 +1018,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(NewLoanOrder);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: 'white'
     },
     sclView: {
         //flex: 1,
@@ -841,7 +1089,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between'
     },
     microPhoneIcon: {
-        width: ScreenUtil.scaleSize(95),
+        width: ScreenUtil.scaleSize(165),
         height: ScreenUtil.scaleSize(150),
         resizeMode: 'contain'
     },
@@ -919,4 +1167,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         height: ScreenUtil.scaleSize(80),
     },
+    bottomView: {
+        position: 'absolute',
+        bottom: 0,
+        width: deviceWidth,
+        height: ScreenUtil.scaleSize(119),
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        shadowOffset: {width: 0, height: 1},
+        shadowColor: 'rgba(145,145,145,0.3)',
+        shadowOpacity: 1,
+        shadowRadius: 2,
+        elevation: 2,
+    }
 });

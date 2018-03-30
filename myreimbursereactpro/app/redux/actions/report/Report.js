@@ -1,7 +1,6 @@
 import * as types from '../../../constant/ActionTypes';
 import HttpUtil from '../../../network/HttpUtil';
 import API from '../../../utils/API';
-import Util from '../../../utils/Util';
 
 export const changeState = (state) => {
     return {
@@ -17,7 +16,7 @@ export const loadData = () => {
 }
 
 export const changeToReportTab = () => {
-    return dispatch => {
+    return (dispatch, getState) => {
         return HttpUtil.postJson(API.GET_REPORT_YEAR_STATUS, {}, dispatch, function (ret, status) {
             if (status) {
                 dispatch(changeState({
@@ -35,6 +34,7 @@ export const changeToReportTab = () => {
                         const year = d.getFullYear();
                         const month = '' + (d.getMonth() + 1);
                         var name = '';
+                        var seriesName = getState().Report.seriesName;
                         if (month < 10) {
                             name = year + '-0' + month;
                         } else {
@@ -92,7 +92,7 @@ export const changeToReportTab = () => {
                         }));
                         return HttpUtil.postJson(API.REIMBURSEMENT_TOTAL_AMOUNT_CHART, {
                             name: name,
-                            seriesName: '审批通过',
+                            seriesName: seriesName,
                             bxtypeqf: 'costtrends'
                         }, dispatch, function (ret, status) {
                             if (status) {
@@ -106,6 +106,7 @@ export const changeToReportTab = () => {
                                         defaultDate: year + '年' + month + '月',
                                         defaultMonth: month + '月',
                                         name: name,
+                                        seriesName: seriesName,
                                         reimbursementAmountChartData: ret.data,
                                         isLoading: false
                                     }));

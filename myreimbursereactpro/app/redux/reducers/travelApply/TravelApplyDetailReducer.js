@@ -1,13 +1,9 @@
 /**
  * Created by Louis.lu on 2018-01-29.
  */
-import * as types from '../../../constant/ActionTypes';
-import Util from '../../../utils/Util';
-import Message from '../../../constant/Message';
-import ScreenUtil, {deviceHeight} from '../../../utils/ScreenUtil';
-import {
-    Animated,
-} from 'react-native';
+import * as types from "../../../constant/ActionTypes";
+import ScreenUtil, {deviceHeight} from "../../../utils/ScreenUtil";
+import {Animated} from "react-native";
 
 const initialState = {
     isLoading: false,
@@ -27,44 +23,7 @@ const initialState = {
     expectedCostAmount: '',      //预计花费金额
     peerPerple: "",   //同行人
     attachmentList: [],     //附件列表
-    approvalRecordList: [
-        {
-            bizCommentExtList: null,
-            createTimeStr: "2018-01-10 17:25:06",
-            id: "20180110172506543f4a2bd2be396429fa4116b456d2cd0f9",
-            operate: "0",
-            operateComment: null,
-            procinstId: "1018227",
-            taskId: null,
-            taskKey: null,
-            userId: "20171121160219900e4de63969adb43798792baa35ae6a0b7",
-            userName: "毛同学",
-        },
-        {
-            bizCommentExtList: null,
-            createTimeStr: "2018-01-23 14:38:16",
-            id: "20180123143816029e208a996682840b8bdfe3a907a59437d",
-            operate: "4",
-            operateComment: null,
-            procinstId: "1018227",
-            taskId: "1018440",
-            taskKey: "task1502966055902",
-            userId: "20171128105508365848c29f1c40545e9a9bbd41d6175cd0e",
-            userName: "成吉思汗",
-        },
-        {
-            bizCommentExtList: null,
-            createTimeStr: "2018-01-23 14:38:16",
-            id: "20180123143816029e208a996682840b8bdfe3a907a59437d",
-            operate: "3",
-            operateComment: null,
-            procinstId: "1018227",
-            taskId: "1018440",
-            taskKey: "task1502966055902",
-            userId: "20171128105508365848c29f1c40545e9a9bbd41d6175cd0e",
-            userName: "成吉思汗",
-        }
-    ],
+    approvalRecordList: [],
 
     showRejectDialog: false,        //是否显示驳回弹窗
     showEmailDialog: false,        //是否显示邮箱弹窗
@@ -85,6 +44,10 @@ const initialState = {
     previewShow: false,
     cancelModalVisible: false, //是否显示撤回对话框
 
+    travelPartnerId:'',         //同行人id
+    ccUid: '',                  //抄送人id
+    ccName: '',                 //抄送人姓名
+    procinstId: '',             //审批流程id
 }
 
 const TravelApplyDetailReducer = (state = initialState, action) => {

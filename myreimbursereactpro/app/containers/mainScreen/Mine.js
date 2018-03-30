@@ -4,22 +4,34 @@
 import React, {Component} from "react";
 import {connect} from "react-redux";
 import {bindActionCreators} from "redux";
-import {Image, StyleSheet, Text, View, Platform, TouchableOpacity, TouchableWithoutFeedback,NativeModules} from "react-native";
+import {
+    Image,
+    StyleSheet,
+    Text,
+    View,
+    Platform,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    NativeModules,
+    findNodeHandle,
+    DeviceEventEmitter
+} from "react-native";
 import {
     navigatePersonalInformation,
     navigateModifyPasswordVerification,
     navigateSetUp,
     navigateAboutUs
 } from "../../redux/actions/navigator/Navigator";
-import {loadData,changeState,checkUpgrade} from "../../redux/actions/mine/Mine";
+import {loadData, changeState, checkUpgrade} from "../../redux/actions/mine/Mine";
 import Util from "../../utils/Util";
 import ScreenUtil from "../../utils/ScreenUtil";
 import Message from "../../constant/Message";
 import Dialog from "../../containers/common/Dialog";
 import {CustomStyles} from "../../css/CustomStyles";
 import Header from "./../common/CommonHeader";
-import API from '../../utils/API';
 import Store from "react-native-simple-store";
+import {BlurView} from "react-native-blur";
+import {changeState as changeAppState} from '../../redux/actions/App';
 
 var UpdateAppModule = NativeModules.UpdateAppModule;
 
@@ -32,6 +44,10 @@ class Mine extends Component {
                 style={CustomStyles.icon}
             />
         ),
+        tabBarOnPress: ({route, index}, jumpToIndex) => {
+            DeviceEventEmitter.emit('setMineTab');
+            jumpToIndex(index);
+        }
     }
 
     componentDidMount() {
@@ -44,6 +60,28 @@ class Mine extends Component {
                 })
             }
         })
+        this.hideBlurSubscription = DeviceEventEmitter.addListener('hideBlurTabFour', ()=>this.blurAction('0'));
+        this.showBlurSubscription = DeviceEventEmitter.addListener('showBlurTabFour', ()=>this.blurAction('1'));
+        this.setMineTab = DeviceEventEmitter.addListener('setMineTab', ()=>this.setTab());
+    }
+
+    /**
+     * 组件卸载
+     * 清除定时器，监听器
+     */
+    componentWillUnmount() {
+        this.hideBlurSubscription.remove();
+        this.showBlurSubscription.remove();
+        this.setMineTab.remove();
+    }
+
+    setTab() {
+        const that = this;
+        setTimeout(() => {
+            that.props.changeAppState({
+                currentTab: 'Mine'
+            })
+        }, 100);
     }
 
     /**
@@ -51,6 +89,17 @@ class Mine extends Component {
      */
     closeModal(){
         this.props.changeState({showUpgrade: false})
+    }
+
+    /**
+     * 模糊相关操作
+     */
+    blurAction(type) {
+        if (type == '1') {
+            this.props.changeState({viewRef: findNodeHandle(this.refs.blurView)});
+        } else {
+            this.props.changeState({viewRef: null});
+        }
     }
 
     /**
@@ -73,123 +122,136 @@ class Mine extends Component {
     render() {
         return(
             <View style={{ flex:1, backgroundColor: '#F3F3F3'}}>
-                <Header
-                    titleText={Message.MINE}
-                    thisComponent={this}
-                    showBackIcon={false}
-                    rightClick={this.props.navigateSetUp}
-                    rightIcon={require('../../img/mine/set_up.png')}
-                    rightIconStyle={{
-                        width: ScreenUtil.scaleSize(42),
-                        height: ScreenUtil.scaleSize(42),
-                        resizeMode: 'stretch',
+                <BlurView
+                    style={{
+                        position: "absolute",
+                        top: 0, left: 0, bottom: 0, right: 0,
+                        flex: 1,
+                        zIndex: (this.props.state.viewRef != null ? 300 : -99)
                     }}
-                />
-                <Dialog
-                    titleText={Message.HOME_PAGE_FOUND_NEW_VERSION}
-                    content={Message.MINE_UPDATE_VERSION_CONTENT}
-                    type={'confirm'}
-                    leftBtnText={Message.MINE_UPDATE_VERSION_NEXT_TIME}
-                    rightBtnText={Message.MINE_UPDATE_VERSION_NOW}
-                    modalVisible={this.props.state.showUpgrade}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    onClose={this.closeModal.bind(this)}
-                    leftBtnClick={this.closeModal.bind(this)}
-                    rightBtnClick={this.upgradeApp.bind(this)}
-                    thisComponent={this}
-                />
-                <View style={styles.personalBaseInformationStyle}>
-                    <View style={[styles.rowView, {marginTop: ScreenUtil.scaleSize(0)}]}>
-                        <Text style={styles.nameLabel}>{this.props.state.userInfo.userName}</Text>
-                    </View>
-                    <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]} />
-                    <View style={styles.rowView}>
-                        <Text style={styles.basicTextStyle}>{Message.COMPANY}</Text>
-                        <Text Text numberOfLines={3}
-                              style={[styles.TextViewInformation, {maxWidth: 300,}]}>{this.props.state.userInfo.enterpriseName}</Text>
-                    </View>
-                    <View style={styles.rowView}>
-                        <Text style={styles.basicTextStyle}>{Message.PHONE}</Text>
-                        <Text style={styles.TextViewInformation}>{this.props.state.userInfo.phone}</Text>
-                    </View>
-                    <View style={styles.rowView}>
-                        <Text style={styles.basicTextStyle}>{Message.DEPARTMENT}</Text>
-                        <Text style={styles.TextViewInformation}>{this.props.state.userInfo.orgDepName}</Text>
-                    </View>
-                    <View style={styles.rowView}>
-                        <Text style={styles.basicTextStyle}>{Message.POSITION}</Text>
-                        <Text style={styles.TextViewInformation}>{this.props.state.userInfo.positionName}</Text>
-                    </View>
-                </View>
-                <View style={styles.touchableViewStyle}>
-                    <TouchableOpacity onPress={() => {
-                        this.props.navigatePersonalInformation({
-                            sex: this.props.state.userInfo.sex,
-                            birthday: this.props.state.userInfo.birthday,
-                            area: this.props.state.userInfo.area,
-                            areaId: this.props.state.userInfo.areaId,
-                        })
-                    }}>
-                        <View style={styles.rowContainer}>
-                            <Image
-                                style={styles.labelImagesStyle}
-                                source={require('./../../img/mine/personal_information.png')}/>
-                            <Text style={styles.labelInformationStyle}>{Message.PERSONAL_INFORMATION}</Text>
-                            <Image
-                                style={styles.arrowIcon}
-                                source={require('./../../img/common/arrow.png')}/>
-                        </View>
-                    </TouchableOpacity>
-                    <View style={CustomStyles.separatorLine} />
-                    <TouchableOpacity onPress={() => {
-                        this.props.navigateModifyPasswordVerification()
-                    }}>
-                        <View style={styles.rowContainer}>
-                            <Image
-                                style={styles.labelImagesStyle}
-                                source={require('./../../img/mine/modify_password.png')}/>
-                            <Text style={styles.labelInformationStyle}>{Message.MODIFY_PASSWORD}</Text>
-                            <Image
-                                style={styles.arrowIcon}
-                                source={require('./../../img/common/arrow.png')}/>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                    viewRef={this.props.state.viewRef}
+                    blurType="light"
+                    blurAmount={10}/>
 
-                <View style={styles.touchableViewStyle}>
-                    <TouchableOpacity onPress={() => {
-                        if(Platform.OS == 'ios') {
-                            UpdateAppModule.gotoAppstore();
-                        }else{
-                            this.props.checkUpgrade();
-                        }
-                    }}>
-                        <View style={styles.rowContainer}>
-                            <Image
-                                style={styles.labelImagesStyle}
-                                source={require('./../../img/mine/check_update.png')}/>
-                            <Text
-                                style={styles.labelInformationStyle}>{Platform.OS == 'ios' ? Message.POINT : Message.CHECK_UPDATE}</Text>
-                            <Image
-                                style={styles.arrowIcon}
-                                source={require('./../../img/common/arrow.png')}/>
+                <View ref="blurView" style={{flex: 1,backgroundColor: '#F3F3F3'}}>
+                    <Header
+                        titleText={Message.MINE}
+                        thisComponent={this}
+                        showBackIcon={false}
+                        rightClick={this.props.navigateSetUp}
+                        rightIcon={require('../../img/mine/set_up.png')}
+                        rightIconStyle={{
+                            width: ScreenUtil.scaleSize(42),
+                            height: ScreenUtil.scaleSize(42),
+                            resizeMode: 'stretch',
+                        }}
+                    />
+                    <Dialog
+                        titleText={Message.HOME_PAGE_FOUND_NEW_VERSION}
+                        content={Message.MINE_UPDATE_VERSION_CONTENT}
+                        type={'confirm'}
+                        leftBtnText={Message.MINE_UPDATE_VERSION_NEXT_TIME}
+                        rightBtnText={Message.MINE_UPDATE_VERSION_NOW}
+                        modalVisible={this.props.state.showUpgrade}
+                        leftBtnStyle={{color: '#A5A5A5',}}
+                        rightBtnStyle={{color: '#FFAA00',}}
+                        onClose={this.closeModal.bind(this)}
+                        leftBtnClick={this.closeModal.bind(this)}
+                        rightBtnClick={this.upgradeApp.bind(this)}
+                        thisComponent={this}
+                    />
+                    <View style={styles.personalBaseInformationStyle}>
+                        <View style={[styles.rowView, {marginTop: ScreenUtil.scaleSize(0)}]}>
+                            <Text style={styles.nameLabel}>{this.props.state.userInfo.userName}</Text>
                         </View>
-                    </TouchableOpacity>
-                    <View style={CustomStyles.separatorLine}/>
-                    <TouchableOpacity onPress={() => {
-                        this.props.navigateAboutUs();
-                    }}>
-                        <View style={styles.rowContainer}>
-                            <Image
-                                style={styles.labelImagesStyle}
-                                source={require('./../../img/mine/about_us.png')}/>
-                            <Text style={styles.labelInformationStyle}>{Message.ABOUT_US}</Text>
-                            <Image
-                                style={styles.arrowIcon}
-                                source={require('./../../img/common/arrow.png')}/>
+                        <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]} />
+                        <View style={styles.rowView}>
+                            <Text style={styles.basicTextStyle}>{Message.COMPANY}</Text>
+                            <Text Text numberOfLines={3}
+                                  style={[styles.TextViewInformation, {maxWidth: 300,}]}>{this.props.state.userInfo.enterpriseName}</Text>
                         </View>
-                    </TouchableOpacity>
+                        <View style={styles.rowView}>
+                            <Text style={styles.basicTextStyle}>{Message.PHONE}</Text>
+                            <Text style={styles.TextViewInformation}>{this.props.state.userInfo.phone}</Text>
+                        </View>
+                        <View style={styles.rowView}>
+                            <Text style={styles.basicTextStyle}>{Message.DEPARTMENT}</Text>
+                            <Text style={styles.TextViewInformation}>{this.props.state.userInfo.orgDepName}</Text>
+                        </View>
+                        <View style={styles.rowView}>
+                            <Text style={styles.basicTextStyle}>{Message.POSITION}</Text>
+                            <Text style={styles.TextViewInformation}>{this.props.state.userInfo.positionName}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.touchableViewStyle}>
+                        <TouchableOpacity onPress={() => {
+                            this.props.navigatePersonalInformation({
+                                sex: this.props.state.userInfo.sex,
+                                birthday: this.props.state.userInfo.birthday,
+                                area: this.props.state.userInfo.area,
+                                areaId: this.props.state.userInfo.areaId,
+                            })
+                        }}>
+                            <View style={styles.rowContainer}>
+                                <Image
+                                    style={styles.labelImagesStyle}
+                                    source={require('./../../img/mine/personal_information.png')}/>
+                                <Text style={styles.labelInformationStyle}>{Message.PERSONAL_INFORMATION}</Text>
+                                <Image
+                                    style={styles.arrowIcon}
+                                    source={require('./../../img/common/arrow.png')}/>
+                            </View>
+                        </TouchableOpacity>
+                        <View style={CustomStyles.separatorLine} />
+                        <TouchableOpacity onPress={() => {
+                            this.props.navigateModifyPasswordVerification()
+                        }}>
+                            <View style={styles.rowContainer}>
+                                <Image
+                                    style={styles.labelImagesStyle}
+                                    source={require('./../../img/mine/modify_password.png')}/>
+                                <Text style={styles.labelInformationStyle}>{Message.MODIFY_PASSWORD}</Text>
+                                <Image
+                                    style={styles.arrowIcon}
+                                    source={require('./../../img/common/arrow.png')}/>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.touchableViewStyle}>
+                        <TouchableOpacity onPress={() => {
+                            if(Platform.OS == 'ios') {
+                                UpdateAppModule.gotoAppstore();
+                            }else{
+                                this.props.checkUpgrade();
+                            }
+                        }}>
+                            <View style={styles.rowContainer}>
+                                <Image
+                                    style={styles.labelImagesStyle}
+                                    source={require('./../../img/mine/check_update.png')}/>
+                                <Text
+                                    style={styles.labelInformationStyle}>{Platform.OS == 'ios' ? Message.POINT : Message.CHECK_UPDATE}</Text>
+                                <Image
+                                    style={styles.arrowIcon}
+                                    source={require('./../../img/common/arrow.png')}/>
+                            </View>
+                        </TouchableOpacity>
+                        <View style={CustomStyles.separatorLine}/>
+                        <TouchableOpacity onPress={() => {
+                            this.props.navigateAboutUs();
+                        }}>
+                            <View style={styles.rowContainer}>
+                                <Image
+                                    style={styles.labelImagesStyle}
+                                    source={require('./../../img/mine/about_us.png')}/>
+                                <Text style={styles.labelInformationStyle}>{Message.ABOUT_US}</Text>
+                                <Image
+                                    style={styles.arrowIcon}
+                                    source={require('./../../img/common/arrow.png')}/>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         )
@@ -210,7 +272,8 @@ function mapDispatchToProps(dispatch) {
         navigateAboutUs: navigateAboutUs,
         loadData: loadData,
         changeState:changeState,
-        checkUpgrade:checkUpgrade
+        checkUpgrade:checkUpgrade,
+        changeAppState: changeAppState,
     }, dispatch);
 }
 

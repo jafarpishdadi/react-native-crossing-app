@@ -30,10 +30,12 @@ import {
     refreshMyNotices,
     loadMoreMyNotices,
     initData,
+    updateBadges,
 } from '../../redux/actions/mine/MyNotices';
 import {navigateReimbursementDetail, back} from '../../redux/actions/navigator/Navigator';
 import {loadMessageData, changeState as homePageChangeState} from '../../redux/actions/homePage/HomePage';
 import Header from "./../common/CommonHeader";
+import SafeAreaView from "react-native-safe-area-view";
 
 class MyNotices extends Component {
     static navigationOptions = ({navigation}) => ({
@@ -46,6 +48,7 @@ class MyNotices extends Component {
 
     componentDidMount() {
         this.props.loadData();
+        this.props.updateBadges();
     }
 
     /**
@@ -61,8 +64,9 @@ class MyNotices extends Component {
      * @returns {XML}
      */
     renderReading(item) {
-        if (item[7] === "0") {
-            return (<View style={styles.dotRow}>
+        if (item.isView === "0") {
+            return (
+                <View style={styles.dotRow}>
                     <Image
                         style={styles.dotIcon}
                         source={require('./../../img/mine/oval.png')}/>
@@ -172,9 +176,9 @@ class MyNotices extends Component {
         var data = this.props.state.messageData;
         if (data.length > 0) {
             for (var i = 0; i < data.length; i++) {
-                if (item[0] === data[i].id) {
+                if (item.id === data[i].id) {
                     //是否查看 0没查看1已查看
-                    data[i].isView = item[7];
+                    data[i].isView = item.isView;
                 }
             }
         }
@@ -197,16 +201,55 @@ class MyNotices extends Component {
                 result = parseFloat(this.props.state.totalAmount).toFixed(2) + '';
                 return result;
             case 2:
-                result = ((parseFloat(money).toFixed(2) + '') == 'NaN') ? '' : (parseFloat(money).toFixed(2) + '');
+                result = ((parseFloat(money) + '') == 'NaN') ? '' : (parseFloat(money).toFixed(2) + '');
                 return result;
             default:
+        }
+    }
+
+    //渲染消息内容
+    renderMessageDesc(item, desc) {
+        if (item.templatNo == '100004') {
+            return (
+                <View>
+                    <View style={styles.otherRow}>
+                        <Text style={styles.labelText}>{Message.TARGET_CITY}</Text>
+                        <Text
+                            numberOfLines={1}
+                            style={[styles.inputText, {width: ScreenUtil.scaleSize(450)}]}>{desc.targetCity}</Text>
+                    </View>
+                </View>
+            )
+        } else if (item.templatNo == '100003') {
+            return (
+                <View>
+                    <View style={styles.otherRow}>
+                        <Text style={styles.labelText}>{Message.LOAN_AMOUNT}</Text>
+                        <Text style={styles.inputText}>{Message.MONEY + this.moneyFormat(desc.amount, 2)}</Text>
+                    </View>
+                </View>
+            )
+
+        } else if (item.templatNo == '100001' || item.templatNo == '1' || !item.templatNo) {
+            return (
+                <View>
+                    <View style={styles.otherRow}>
+                        <Text style={styles.labelText}>{Message.REIMBURSEMENT_CATEGORY}</Text>
+                        <Text style={styles.inputText}>{desc.applyTypeName}</Text>
+                    </View>
+                    <View style={styles.otherRow}>
+                        <Text style={styles.labelText}>{Message.REIMBURSEMENT_AMOUNT_NOTICE}</Text>
+                        <Text style={styles.inputText}>{Message.MONEY + this.moneyFormat(desc.amount, 2)}</Text>
+                    </View>
+                </View>
+            )
         }
     }
 
     render() {
         let that = this;
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
                 <Header
                     titleText={Message.MY_NOTICES}
@@ -228,59 +271,55 @@ class MyNotices extends Component {
                         }
                     }}
                     onEndReachedThreshold={0.5}
-                    data={this.getMessageDescriptionArray()}
-                    renderItem={({item, index}) => (
-                        <TouchableOpacity
-                            onPress={() => {
-                                that.props.checkApprovalUserAction({
-                                    expenseNo: item[1],
-                                    isApplicant: item[8] ? item[8] : '',
-                                }, () => {
-                                    that.props.updateMessageStatus(
-                                        {
-                                            "id": item[0],
-                                            "isView": item[7]
-                                        }, () => {
-                                            that.props.loadMessageData();
-                                            if (item[7] == "0") {
-                                                item[7] = "1";
-                                                that.updateMessage(item);
+                    data={this.props.state.messageData}
+                    renderItem={({item, index}) => {
+                        const desc = Util.jsonParse(item.noticeDesc);
+                        return (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    that.props.checkApprovalUserAction({
+                                        expenseNo: item.detailId,
+                                        isApplicant: desc.isApplicant ? desc.isApplicant : '',
+                                    }, item.templatNo, () => {
+                                        that.props.updateMessageStatus(
+                                            {
+                                                "id": item.id,
+                                                "isView": item.isView
+                                            }, () => {
+                                                that.props.loadMessageData();
+                                                if (item.isView == "0") {
+                                                    item.isView = "1";
+                                                    that.updateMessage(item);
+                                                }
                                             }
-                                        }
-                                    );
-                                });
-                            }}>
-                            <View
-                                style={[styles.applicationView, {marginTop: ScreenUtil.scaleSize(index == 0 ? 20 : 10)}]}>
-                                {this.renderReading(item)}
-                                <View style={{
-                                    flexDirection: 'row', alignItems: 'space-between',
-                                    justifyContent: 'space-between', height: ScreenUtil.scaleSize(40)
+                                        );
+                                    });
                                 }}>
-                                    <View style={styles.firstRow}>
-                                        <Text style={{
-                                            fontSize: ScreenUtil.setSpText(9),
-                                            fontWeight: 'bold',
-                                        }} numberOfLines={1}>{item[6]}</Text>
-                                    </View>
+                                <View
+                                    style={[styles.applicationView, {marginTop: ScreenUtil.scaleSize(index == 0 ? 20 : 10)}]}>
+                                    {this.renderReading(item)}
                                     <View style={{
-                                        marginTop: 0, paddingTop: 0,
-                                        height: ScreenUtil.scaleSize(40)
+                                        flexDirection: 'row', alignItems: 'space-between',
+                                        justifyContent: 'space-between', height: ScreenUtil.scaleSize(40)
                                     }}>
-                                        {this.renderStatus(item[5])}
+                                        <View style={styles.firstRow}>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(9),
+                                                fontWeight: 'bold',
+                                            }} numberOfLines={1}>{desc.title}</Text>
+                                        </View>
+                                        <View style={{
+                                            marginTop: 0, paddingTop: 0,
+                                            height: ScreenUtil.scaleSize(40)
+                                        }}>
+                                            {this.renderStatus(desc.expenseState)}
+                                        </View>
                                     </View>
+                                    {this.renderMessageDesc(item, desc)}
                                 </View>
-                                <View style={styles.otherRow}>
-                                    <Text style={styles.labelText}>{Message.REIMBURSEMENT_CATEGORY}</Text>
-                                    <Text style={styles.inputText}>{item[4]}</Text>
-                                </View>
-                                <View style={styles.otherRow}>
-                                    <Text style={styles.labelText}>{Message.REIMBURSEMENT_AMOUNT_NOTICE}</Text>
-                                    <Text style={styles.inputText}>{Message.MONEY + this.moneyFormat(item[3], 2)}</Text>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                    )}
+                            </TouchableOpacity>
+                        )
+                    }}
                     ListFooterComponent={
                         (this.props.state.showLoading) ?
                             <View style={{
@@ -306,7 +345,7 @@ class MyNotices extends Component {
                             </View> : <View/>
                     }
                 />
-            </View>
+            </SafeAreaView>
         )
     }
 }
@@ -330,6 +369,7 @@ function mapDispatchToProps(dispatch) {
         initData: initData,
         loadMessageData: loadMessageData,
         homePageChangeState: homePageChangeState,
+        updateBadges: updateBadges
     }, dispatch);
 }
 
@@ -367,7 +407,8 @@ const styles = StyleSheet.create({
     },
     firstRow: {
         height: ScreenUtil.scaleSize(40),
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        width: ScreenUtil.scaleSize(500),
     },
     otherRow: {
         flexDirection: 'row',

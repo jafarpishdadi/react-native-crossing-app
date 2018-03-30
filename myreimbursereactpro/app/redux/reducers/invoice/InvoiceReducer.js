@@ -69,7 +69,10 @@ const initialState = {
     showPickerShadow: false,   //是否显示选择器阴影
 
     showNoPermissionDialog:false,
-    isShowDatePicker: false
+    isShowDatePicker: false,
+
+    invoiceCountZIndex: -500,
+    invoiceAmountZIndex: -500
 }
 
 const invoiceReducer = (state = initialState, action) => {

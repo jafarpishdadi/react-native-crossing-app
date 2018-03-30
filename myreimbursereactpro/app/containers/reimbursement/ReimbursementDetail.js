@@ -21,7 +21,7 @@ import {
     Keyboard,
     Animated,
     Platform,
-    BackHandler
+    BackHandler,
 } from "react-native";
 import Message from "../../constant/Message";
 import ScreenUtil, {deviceWidth, deviceHeight} from "../../utils/ScreenUtil";
@@ -52,6 +52,7 @@ import CommonLoading from "../../containers/common/CommonLoading";
 import Dialog from "./../common/Dialog";
 import {changeState as changeAppState} from "../../redux/actions/App";
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 var PreviewModule = NativeModules.PreviewModule;
 
@@ -62,6 +63,32 @@ class ReimbursementDetail extends Component {
 
     componentWillMount() {
         this.props.initData();
+        //监听键盘弹出事件
+        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShowHandler.bind(this));
+        //监听键盘隐藏事件
+        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHideHandler.bind(this));
+    }
+
+    //键盘弹出事件响应
+    keyboardDidShowHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: ScreenUtil.scaleSize(150),
+            }
+        ).start();
+    }
+
+    //键盘隐藏事件响应
+    keyboardDidHideHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: (deviceHeight - ScreenUtil.scaleSize(502)) / 2,
+            }
+        ).start();
     }
 
     componentDidMount() {
@@ -156,7 +183,7 @@ class ReimbursementDetail extends Component {
                 iconImage = require('../../img/reimbursement/cancel.png');
                 break;
             case '2':
-                iconImage = require('../../img/reimbursement/reject.png');
+                iconImage = require('../../img/reimbursement/rejection.png');
                 break;
             case '4':
                 iconImage = require('../../img/reimbursement/pass.png');
@@ -502,11 +529,11 @@ class ReimbursementDetail extends Component {
         )
     }
 
-    renderApplicationDate (date) {
+    renderApplicationDate(date) {
         if (date === '' || date === null) {
             return '';
         } else {
-            return date.substring(0,16);
+            return date.substring(0, 16);
         }
     }
 
@@ -646,6 +673,7 @@ class ReimbursementDetail extends Component {
             procinstId: item.procinstId,
             pid: item.pid ? item.id : 'root',
             taskKey: item.taskKey,
+            templateNo: this.props.state.applyTypeCode,
         })
     }
 
@@ -672,7 +700,8 @@ class ReimbursementDetail extends Component {
                     PreviewModule.previewDocument(API.PRINT, component.props.state.token, JSON.stringify({
                         expenseNo: component.props.state.applyNo,
                         procinstId: component.props.state.procinstId,
-                    }), '',timestamp + '.pdf', (value)=> {
+                        templateNo: component.props.state.applyTypeCode,
+                    }), '', timestamp + '.pdf', (value)=> {
                         component.props.changeState({isLoading: false});
                     })
                 },
@@ -698,6 +727,7 @@ class ReimbursementDetail extends Component {
                 expenseNo: this.props.state.applyNo,
                 email: this.props.state.email,
                 procinstId: this.props.state.procinstId,
+                templateNo: this.props.state.applyTypeCode,
             })
         } else {
             Util.showToast(Message.EMAIL_ERROR);
@@ -720,9 +750,8 @@ class ReimbursementDetail extends Component {
     operateCancel(component) {
         component.props.operateCancel({
             state: '1',
-            expenseNo: component.props.state.expenseNo,
-            procinstId: component.props.state.procinstId,
-            uuidList: component.props.state.invoiceUUIDList,
+            billNo: component.props.state.expenseNo,
+            procinstId: component.props.state.procinstId
         })
     }
 
@@ -732,12 +761,11 @@ class ReimbursementDetail extends Component {
     operateReject(component) {
         component.props.operateApproval({
             state: '2',
-            expenseNo: component.props.state.expenseNo,
+            billNo: component.props.state.expenseNo,
             procinstId: component.props.state.procinstId,
             taskId: component.props.navigation.state.params.taskId,
             taskDefKey: component.props.navigation.state.params.taskDefKey,
             operateComment: component.props.state.operateComment,
-            uuidList: component.props.state.invoiceUUIDList,
         })
         //清空驳回原因内容
         this.props.changeState({operateComment: ''});
@@ -749,11 +777,10 @@ class ReimbursementDetail extends Component {
     operateAgree() {
         this.props.operateApproval({
             state: '4',
-            expenseNo: this.props.state.expenseNo,
+            billNo: this.props.state.expenseNo,
             taskId: this.props.navigation.state.params.taskId,
             taskDefKey: this.props.navigation.state.params.taskDefKey,
             procinstId: this.props.state.procinstId,
-            uuidList: this.props.state.invoiceUUIDList,
         })
     }
 
@@ -768,7 +795,7 @@ class ReimbursementDetail extends Component {
         } else {
             component.props.addComment({
                 commentContent: {
-                    expenseNo: component.props.state.expenseNo,
+                    billNo: component.props.state.expenseNo,
                     taskId: item.taskId,
                     toUserId: (component.props.state.currentUserId == component.props.state.createUserId) ? item.userId : component.props.state.createUserId,
                     procinstId: item.procinstId,
@@ -786,7 +813,7 @@ class ReimbursementDetail extends Component {
      */
     edit(component) {
         const data = component.props.state;
-        var requestData ={
+        var requestData = {
             source: 'ReimbursementDetail',
             applyTypeCode: data.applyTypeCode,
             applyTypeName: data.applyType,
@@ -851,7 +878,7 @@ class ReimbursementDetail extends Component {
             bizExpenseTypeIDList: [],           //删除的报销单明细ID集合
             bizExpenseBillIDList: [],           //删除的发票ID集合
             invoiceUUIDList: data.invoiceUUIDList,      //发票id集合
-            titleText:Message.EDIT_REIMBURSEMENT,//报销单标题
+            titleText: Message.EDIT_REIMBURSEMENT,//报销单标题
             bizExpenseAttachmentListFromDetail: data.fileList,
             bizExpenseTypeListFromDetail: data.applyDetail,
         };
@@ -859,10 +886,10 @@ class ReimbursementDetail extends Component {
     }
 
     //选择报销单编辑器
-    selectEdit(){
-        if(this.props.state.applyStatus ==1 || this.props.state.applyStatus ==2){
+    selectEdit() {
+        if (this.props.state.applyStatus == 1 || this.props.state.applyStatus == 2) {
             return this.edit;
-        }else{
+        } else {
             return this.edit0;
         }
     }
@@ -888,12 +915,12 @@ class ReimbursementDetail extends Component {
     /**
      * 预览文件
      */
-    previewDocument(item){
-        this.props.changeState({isLoading:true});
+    previewDocument(item) {
+        this.props.changeState({isLoading: true});
         setTimeout(
             () => {
-                PreviewModule.previewDocument(API.DOWNLOAD_ATTACHMENT_BY_DIR, this.props.state.token, JSON.stringify({fileDir : item.fileAddress}),item.fileAddress,item.fileName,(value)=> {
-                    this.props.changeState({isLoading:false});
+                PreviewModule.previewDocument(API.DOWNLOAD_ATTACHMENT_BY_DIR, this.props.state.token, JSON.stringify({fileDir: item.fileAddress}), item.fileAddress, item.fileName, (value)=> {
+                    this.props.changeState({isLoading: false});
                 })
             },
             500
@@ -903,11 +930,9 @@ class ReimbursementDetail extends Component {
 
     //取消撤回
     _cancelClick() {
-       /* this.props.changeState({
+        this.props.changeState({
             cancelModalVisible: false,
-        })*/
-        // this.props.back();
-        this.props.navigateApplicationList();
+        })
     }
 
 
@@ -955,9 +980,9 @@ class ReimbursementDetail extends Component {
     /**
      * 渲染增票发票明细显示格式
      */
-    renderInvoiceDetail (object) {
+    renderInvoiceDetail(object) {
         if (object.length > 15) {
-            return object.substring(0,16) + '...';
+            return object.substring(0, 16) + '...';
         } else {
             return object;
         }
@@ -991,7 +1016,7 @@ class ReimbursementDetail extends Component {
                 rightColor = '#ABABAB';
                 rightClick = this.selectEdit();
             }
-            if (this.props.state.applyStatus == 3){
+            if (this.props.state.applyStatus == 3) {
                 rightMessage = Message.OPERATE_CANCEL;
                 rightColor = '#ABABAB';
                 rightClick = this.openCancelDialog;
@@ -999,433 +1024,440 @@ class ReimbursementDetail extends Component {
         }
 
         return (
-            <View style={styles.container}>
-                <CommonLoading isShow={this.props.state.isLoading}/>
-                {this.renderImgPreview()}
-                <Dialog
-                    content={Message.CANCEL_REIMBURSEMENT}
-                    type={'confirm'}
-                    leftBtnText={Message.CANCEL}
-                    rightBtnText={Message.CONFIRM}
-                    modalVisible={this.props.state.cancelModalVisible}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    onClose={this._closeCancelModal.bind(this)}
-                    leftBtnClick={this._cancelClick.bind(this)}
-                    rightBtnClick={this.operateCancel.bind(this)}
-                    thisComponent={this}
-                />
-                <InputDialog isShow={this.props.state.showRejectDialog}
-                             backgroundClick={this.closeRejectDialog.bind(this)}
-                             titleText={Message.REIMBURSEMENT_REJECT_REASON}
-                             inputHeight={238}
-                             inputWidth={530}
-                             thisComponent={this}
-                             maxLength={300}
-                             placeholder={Message.REIMBURSEMENT_REJECT_TEXT_PLACEHOLDER}
-                             multiline={true}
-                             onChangeText={(component, text) => {
-                                 component.props.changeState({
-                                     operateComment: text
-                                 })
-                             }}
-                             returnKeyType={'done'}
-                             leftButtonText={Message.CANCEL}
-                             rightButtonText={Message.CONFIRM}
-                             rightClick={this.operateReject.bind(this)}
-                             width={590}
-                             height={502}
-                             top={this.props.state.dialogTop}
-                             onFocus={this.inputOnFocus}
-                             onBlur={this.inputOnBlur}/>
-                <InputDialog isShow={this.props.state.showCommentDialog}
-                             titleText={Message.COMMENT}
-                             inputHeight={238}
-                             inputWidth={530}
-                             thisComponent={this}
-                             maxLength={300}
-                             onChangeText={(component, text) => {
-                                 component.props.changeState({
-                                     commentContent: text
-                                 })
-                             }}
-                             leftClick={this.closeCommentDialog.bind(this)}
-                             rightClick={this.addComment.bind(this)}
-                             placeholder={Message.REIMBURSEMENT_REJECT_TEXT_PLACEHOLDER}
-                             multiline={true}
-                             returnKeyType={'done'}
-                             leftButtonText={Message.CANCEL}
-                             rightButtonText={Message.CONFIRM}
-                             width={590}
-                             height={502}
-                             top={this.props.state.dialogTop}
-                             onFocus={this.inputOnFocus}
-                             onBlur={this.inputOnBlur}/>
-                <InputDialog isShow={this.props.state.showEmailDialog}
-                             backgroundClick={this.closeEmailDialog.bind(this)}
-                             titleText={Message.EMAIL_DIALOG_PLACEHOLDER}
-                             showDialogOpen={true}
-                             multiline={true}
-                             autoGrow={true}
-                             defaultValue={this.props.state.email}
-                             inputHeight={68}
-                             inputWidth={470}
-                             thisComponent={this}
-                             maxLength={100}
-                             onChangeText={(component, text) => {
-                                 component.props.changeState({
-                                     email: text
-                                 })
-                             }}
-                             placeholder={Message.EMAIL_DIALOG_PLACEHOLDER}
-                             returnKeyType={'done'}
-                             leftButtonText={Message.CANCEL}
-                             rightButtonText={Message.CONFIRM}
-                             rightClick={this.sendEmail.bind(this)}
-                             width={590}
-                             textAlignVertical={'center'}
-                             height={332}/>
-                <Header
-                    titleText={this.props.state.applicationTitle}
-                    thisComponent={this}
-                    backClick={this.onBack}
-                    rightText={rightMessage}
-                    rightClick={rightClick}
-                    rightTextStyle={{
-                        fontSize: ScreenUtil.setSpText(9),
-                        color: rightColor,
-                    }}
-                />
-                <ScrollView style={styles.sclView} keyboardShouldPersistTaps={'handled'} scrollOffset={50}
-                            ref="scroll">
-                    <View style={styles.topView}>
-                        {this.renderIcon()}
-                        <View style={{
-                            height: ScreenUtil.scaleSize(48),
-                            justifyContent: 'center',
-                        }}>
-                            <Text style={{
-                                fontSize: ScreenUtil.setSpText(12),
-                                color: '#666666',
-                                fontWeight: 'bold',
-                            }}>{this.props.state.applyPeople}</Text>
+            <SafeAreaView style={styles.container}>
+                <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                    <CommonLoading isShow={this.props.state.isLoading}/>
+                    {this.renderImgPreview()}
+                    <Dialog
+                        content={Message.CANCEL_REIMBURSEMENT}
+                        type={'confirm'}
+                        leftBtnText={Message.CANCEL}
+                        rightBtnText={Message.CONFIRM}
+                        modalVisible={this.props.state.cancelModalVisible}
+                        leftBtnStyle={{color: '#A5A5A5',}}
+                        rightBtnStyle={{color: '#FFAA00',}}
+                        onClose={this._closeCancelModal.bind(this)}
+                        leftBtnClick={this._cancelClick.bind(this)}
+                        rightBtnClick={this.operateCancel.bind(this)}
+                        thisComponent={this}
+                    />
+                    <InputDialog isShow={this.props.state.showRejectDialog}
+                                 backgroundClick={this.closeRejectDialog.bind(this)}
+                                 titleText={Message.REIMBURSEMENT_REJECT_REASON}
+                                 inputHeight={238}
+                                 inputWidth={530}
+                                 thisComponent={this}
+                                 maxLength={300}
+                                 placeholder={Message.REIMBURSEMENT_REJECT_TEXT_PLACEHOLDER}
+                                 multiline={true}
+                                 onChangeText={(component, text) => {
+                                     component.props.changeState({
+                                         operateComment: text
+                                     })
+                                 }}
+                                 returnKeyType={'done'}
+                                 leftButtonText={Message.CANCEL}
+                                 rightButtonText={Message.CONFIRM}
+                                 rightClick={this.operateReject.bind(this)}
+                                 width={590}
+                                 height={502}
+                                 top={this.props.state.dialogTop}
+                                 onFocus={this.inputOnFocus}
+                                 onBlur={this.inputOnBlur}/>
+                    <InputDialog isShow={this.props.state.showCommentDialog}
+                                 titleText={Message.COMMENT}
+                                 inputHeight={238}
+                                 inputWidth={530}
+                                 thisComponent={this}
+                                 maxLength={300}
+                                 onChangeText={(component, text) => {
+                                     component.props.changeState({
+                                         commentContent: text
+                                     })
+                                 }}
+                                 leftClick={this.closeCommentDialog.bind(this)}
+                                 rightClick={this.addComment.bind(this)}
+                                 placeholder={Message.REIMBURSEMENT_REJECT_TEXT_PLACEHOLDER}
+                                 multiline={true}
+                                 returnKeyType={'done'}
+                                 leftButtonText={Message.CANCEL}
+                                 rightButtonText={Message.CONFIRM}
+                                 width={590}
+                                 height={502}
+                                 top={this.props.state.dialogTop}
+                                 onFocus={this.inputOnFocus}
+                                 onBlur={this.inputOnBlur}/>
+                    <InputDialog isShow={this.props.state.showEmailDialog}
+                                 backgroundClick={this.closeEmailDialog.bind(this)}
+                                 titleText={Message.EMAIL_DIALOG_PLACEHOLDER}
+                                 showDialogOpen={true}
+                                 multiline={true}
+                                 autoGrow={true}
+                                 defaultValue={this.props.state.email}
+                                 inputHeight={68}
+                                 inputWidth={470}
+                                 thisComponent={this}
+                                 maxLength={100}
+                                 onChangeText={(component, text) => {
+                                     component.props.changeState({
+                                         email: text
+                                     })
+                                 }}
+                                 placeholder={Message.EMAIL_DIALOG_PLACEHOLDER}
+                                 returnKeyType={'done'}
+                                 leftButtonText={Message.CANCEL}
+                                 rightButtonText={Message.CONFIRM}
+                                 rightClick={this.sendEmail.bind(this)}
+                                 width={590}
+                                 textAlignVertical={'center'}
+                                 top={this.props.state.dialogTop}
+                                 onFocus={this.inputOnFocus}
+                                 onBlur={this.inputOnBlur}
+                                 height={332}/>
+                    <Header
+                        titleText={this.props.state.applicationTitle}
+                        thisComponent={this}
+                        backClick={this.onBack}
+                        rightText={rightMessage}
+                        rightClick={rightClick}
+                        rightTextStyle={{
+                            fontSize: ScreenUtil.setSpText(9),
+                            color: rightColor,
+                        }}
+                    />
+                    <ScrollView style={styles.sclView} keyboardShouldPersistTaps={'handled'} scrollOffset={50}
+                                ref="scroll">
+                        <View style={styles.topView}>
+                            {this.renderIcon()}
+                            <View style={{
+                                height: ScreenUtil.scaleSize(48),
+                                justifyContent: 'center',
+                            }}>
+                                <Text style={{
+                                    fontSize: ScreenUtil.setSpText(12),
+                                    color: '#666666',
+                                    fontWeight: 'bold',
+                                }}>{this.props.state.applyPeople}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{this.getStatus(this.props.state.applyStatus)}</Text>
+                            </View>
+                            <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]}/>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_NO}</Text>
+                                <Text style={styles.text}>{this.props.state.applyNo}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_TIME}</Text>
+                                <Text style={styles.text}>{this.props.state.applyTime}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_AMOUNT}</Text>
+                                <Text
+                                    style={[styles.text, {color: '#FFAA00'}]}>{(this.props.state.applyAmount == '' ? '' : Message.MONEY + parseFloat(this.props.state.applyAmount).toFixed(2))}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_TYPE}</Text>
+                                <Text style={styles.text}>{this.props.state.applyType}</Text>
+                            </View>
                         </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{this.getStatus(this.props.state.applyStatus)}</Text>
-                        </View>
-                        <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]}/>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_NO}</Text>
-                            <Text style={styles.text}>{this.props.state.applyNo}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_TIME}</Text>
-                            <Text style={styles.text}>{this.props.state.applyTime}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_AMOUNT}</Text>
-                            <Text
-                                style={[styles.text, {color: '#FFAA00'}]}>{(this.props.state.applyAmount == ''?'':Message.MONEY + parseFloat(this.props.state.applyAmount).toFixed(2))}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_TYPE}</Text>
-                            <Text style={styles.text}>{this.props.state.applyType}</Text>
-                        </View>
-                    </View>
 
-                    <View style={[styles.topView, {marginTop: ScreenUtil.scaleSize(20)}]}>
-                        <View style={{
-                            height: ScreenUtil.scaleSize(40),
-                            justifyContent: 'center',
-                        }}>
-                            <Text style={{
-                                fontSize: ScreenUtil.setSpText(9),
-                                color: '#666666',
-                                fontWeight: 'bold',
-                            }}>{this.props.state.applyTypeCode == '1' ? Message.REIMBURSEMENT_TRAVEL_DETAIL : Message.REIMBURSEMENT_NORMAL_DETAIL}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_DEPARTMENT}</Text>
-                            <Text style={styles.text}>{this.props.state.department}</Text>
-                        </View>
-                        {
-                            this.props.state.applyTypeCode == '1' ? (
-                                <View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.label}>{Message.REIMBURSEMENT_START_DATE}</Text>
-                                        <Text style={styles.text}>{this.props.state.applyStartTime}</Text>
-                                    </View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.label}>{Message.REIMBURSEMENT_END_DATE}</Text>
-                                        <Text style={styles.text}>{this.props.state.applyEndTime}</Text>
-                                    </View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.label}>{Message.REIMBURSEMENT_BUSINESS_DAY}</Text>
-                                        <Text style={styles.text}>{this.props.state.travelDays}</Text>
-                                    </View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.label}>{Message.NEW_RE_BUSINESS_CITY}</Text>
-                                        <Text style={styles.text}>{this.props.state.applyCity}</Text>
-                                    </View>
-                                    <View style={{
-                                        flexDirection: 'row',
-                                        marginTop: ScreenUtil.scaleSize(25),
-                                    }}>
-                                        <Text style={styles.label}>{Message.REIMBURSEMENT_REASON_FOR_TRIP_FEE}</Text>
-                                        <View style={{
-                                            width: ScreenUtil.scaleSize(450),
-                                        }}>
-                                            <TextInput
-                                                editable={false}
-                                                multiline={true}
-                                                autoGrow={true}
-                                                minHeight={ScreenUtil.scaleSize(40)}
-                                                maxHeight={ScreenUtil.scaleSize(700)}
-                                                value={this.props.state.expenseDesc}
-                                                placeholderTextColor="#ABABAB"
-                                                underlineColorAndroid="transparent"
-                                                style={{
-                                                    textAlign: 'left',
-                                                    fontSize: ScreenUtil.setSpText(9),
-                                                    color: '#666666',
-                                                    textAlignVertical: 'center',
-                                                    paddingTop: 0,
-                                                    paddingBottom: 0,
-                                                    paddingLeft: 0,
-                                                }} />
-                                        </View>
-                                    </View>
-                                </View>
-                            ) : (
-                                <View style={{
-                                    flexDirection: 'row',
-                                    marginTop: ScreenUtil.scaleSize(25),
-                                }}>
-                                    <Text style={styles.label}>{Message.REIMBURSEMENT_REASON}</Text>
-                                    <View style={{
-                                        width: ScreenUtil.scaleSize(450),
-                                    }}>
-                                        <TextInput
-                                            editable={false}
-                                            multiline={true}
-                                            autoGrow={true}
-                                            minHeight={ScreenUtil.scaleSize(40)}
-                                            maxHeight={ScreenUtil.scaleSize(700)}
-                                            value={this.props.state.expenseDesc}
-                                            placeholderTextColor="#ABABAB"
-                                            underlineColorAndroid="transparent"
-                                            style={{
-                                                textAlign: 'left',
-                                                fontSize: ScreenUtil.setSpText(9),
-                                                color: '#666666',
-                                                textAlignVertical: 'center',
-                                                paddingTop: 0,
-                                                paddingBottom: 0,
-                                                paddingLeft: 0,
-                                            }} />
-                                    </View>
-                                </View>
-                            )
-                        }
-                        <FlatList
-                            data={this.props.state.applyDetail}
-                            renderItem={({item, index}) => (
-                                <View style={styles.detailView}>
-                                    <View style={{height: ScreenUtil.scaleSize(33), justifyContent: 'center'}}>
-                                        <Text style={{
-                                            fontSize: ScreenUtil.setSpText(7),
-                                            color: '#ABABAB',
-                                        }}>{Message.NEW_RE_DETAIL + ' (' + (index + 1) + ')'}</Text>
-                                    </View>
-                                    <View style={[styles.row, {marginTop: ScreenUtil.scaleSize(30)}]}>
-                                        <Text style={styles.detailLabel}>{Message.NEW_RE_COST_TYPE}</Text>
-                                        <Text style={styles.text}>{item.expenseNameTwo}</Text>
-                                    </View>
-                                    <View style={{
-                                        flexDirection: 'row',
-                                        marginTop: ScreenUtil.scaleSize(25),
-                                    }}>
-                                        <Text style={styles.detailLabel}>{Message.NEW_RE_COST_DETAIL}</Text>
-                                        <View style={{
-                                            width: ScreenUtil.scaleSize(400),
-                                        }}>
-                                            {item.detail == '' ? null :
-                                                <TextInput
-                                                editable={false}
-                                                multiline={true}
-                                                autoGrow={true}
-                                                minHeight={ScreenUtil.scaleSize(40)}
-                                                maxHeight={ScreenUtil.scaleSize(750)}
-                                                value={item.detail}
-                                                placeholderTextColor="#ABABAB"
-                                                underlineColorAndroid="transparent"
-                                                style={{
-                                                    textAlign: 'left',
-                                                    fontSize: ScreenUtil.setSpText(9),
-                                                    color: '#666666',
-                                                    textAlignVertical: 'center',
-                                                    paddingTop: 0,
-                                                    paddingBottom: 0,
-                                                    paddingLeft: 0,
-                                                }} />}
-                                        </View>
-                                    </View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.detailLabel}>{Message.NEW_RE_INVOICE_DETAIL}</Text>
-                                    </View>
-                                    <FlatList
-                                        data={item.bizExpenseBillList}
-                                        renderItem={({item, index}) => (
-                                            <TouchableOpacity onPress={() => {
-                                                this.props.navigateInvoiceDetails({uuid: item.invoiceUUID,fromReDetail:true})
-                                            }} style={styles.invoiceDetail}>
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                }}>
-                                                    <View style={{
-                                                        flexDirection: 'row',
-                                                        height: ScreenUtil.scaleSize(40),
-                                                        alignItems: 'center',
-                                                        width: ScreenUtil.scaleSize(305),
-                                                    }}>
-                                                        <Text
-                                                            style={styles.invoiceLabel}>{Message.NEW_RE_INVOICE_DATE + ':'}</Text>
-                                                        <Text
-                                                            style={styles.text}>{item.invoiceDateStr ? item.invoiceDateStr.substring(0, 10) : ''}</Text>
-                                                    </View>
-                                                    <View style={{
-                                                        flexDirection: 'row',
-                                                        height: ScreenUtil.scaleSize(40),
-                                                        alignItems: 'center',
-                                                        width: ScreenUtil.scaleSize(305),
-                                                    }}>
-                                                        <Text
-                                                            style={styles.invoiceLabel}>{Message.NEW_RE_INVOICE_AMOUNT + ':'}</Text>
-                                                        <Text style={styles.text}>{parseFloat(item.invoiceAmount).toFixed(2)}</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                }}>
-                                                    <View style={{
-                                                        flexDirection: 'row',
-                                                        height: ScreenUtil.scaleSize(40),
-                                                        alignItems: 'center',
-                                                        marginTop: ScreenUtil.scaleSize(20),
-                                                    }}>
-                                                        <Text
-                                                            style={styles.invoiceLabel}>{Message.NEW_RE_DETAIL + ':'}</Text>
-                                                        {
-                                                            Util.contains(['01', '02', '04', '10', '11'], item.invoiceType) ? (
-                                                                <Text
-                                                                    style={styles.text}>{this.renderInvoiceDetail(item.invoiceDetail)}</Text>
-                                                            ) : (
-                                                                <Text
-                                                                    style={styles.text}>{Util.getInvoiceTypeName(item.invoiceType)}</Text>
-                                                            )
-                                                        }
-                                                    </View>
-                                                </View>
-                                            </TouchableOpacity>
-                                        )}
-                                    />
-                                    <View style={styles.row}>
-                                        <Text style={styles.detailLabel}>{Message.NEW_RE_INVOICE_DETAIL_AMOUNT}</Text>
-                                        <Text style={[styles.text, {color: '#FFAA00'}]}>{(item.totalAmount == ''? '':Message.MONEY+ item.totalAmount)}</Text>
-                                    </View>
-                                    <View style={styles.row}>
-                                        <Text style={styles.detailLabel}>{Message.NEW_RE_INVOICE_ACCOUNT}</Text>
-                                        <Text
-                                            style={styles.text}>{item.totalNum ? item.totalNum + Message.NEW_RE_INVOICE_ACCOUNT_UNIT : ''}</Text>
-                                    </View>
-                                </View>
-                            )}
-                        />
-                        {
-                            this.props.state.applyTypeCode == '1' ? (
-                                <View style={styles.row}>
-                                    <Text style={styles.label}>{Message.NEW_RE_ASSISTANCE}</Text>
-                                    <Text style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.travelBill ? (Message.MONEY + this.props.state.travelBill) : ''}</Text>
-                                </View>
-                            ) : null
-                        }
-                        <View style={{
-                            marginTop: ScreenUtil.scaleSize(20),
-                            flexDirection: 'row',
-                        }}>
+                        <View style={[styles.topView, {marginTop: ScreenUtil.scaleSize(20)}]}>
                             <View style={{
                                 height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
                             }}>
-                                <Text style={styles.label}>{Message.NEW_RE_ATTACHMENT}</Text>
+                                <Text style={{
+                                    fontSize: ScreenUtil.setSpText(9),
+                                    color: '#666666',
+                                    fontWeight: 'bold',
+                                }}>{this.props.state.applyTypeCode == '1' ? Message.REIMBURSEMENT_TRAVEL_DETAIL : Message.REIMBURSEMENT_NORMAL_DETAIL}</Text>
                             </View>
-                            <FlatList
-                                data={this.props.state.fileList}
-                                renderItem={({item, index}) => (
-                                    <TouchableOpacity style={{
-                                        flexDirection: 'row',
-                                        height: ScreenUtil.scaleSize(66),
-                                        marginTop: ScreenUtil.scaleSize(index == 0 ? 0 : 40),
-                                        alignItems: 'center',
-                                    }} onPress={() => {
-                                        this.previewDocument(item);
-                                    }}>
-                                        {this.renderFileIcon(item.fileType)}
-                                        <View style={{
-                                            marginLeft: ScreenUtil.scaleSize(20),
-                                            flex: 1,
-                                        }}>
-                                            <Text style={{
-                                                fontSize: ScreenUtil.setSpText(7),
-                                                color: '#666666',
-                                            }} numberOfLines={1}>{item.fileName}</Text>
-                                            <Text style={{
-                                                fontSize: ScreenUtil.setSpText(7),
-                                                color: '#666666'
-                                            }} numberOfLines={1}>{item.fileSize + 'KB'}</Text>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_DEPARTMENT}</Text>
+                                <Text style={styles.text}>{this.props.state.department}</Text>
+                            </View>
+                            {
+                                this.props.state.applyTypeCode == '1' ? (
+                                    <View>
+                                        <View style={styles.row}>
+                                            <Text style={styles.label}>{Message.REIMBURSEMENT_START_DATE}</Text>
+                                            <Text style={styles.text}>{this.props.state.applyStartTime}</Text>
                                         </View>
-                                    </TouchableOpacity>
+                                        <View style={styles.row}>
+                                            <Text style={styles.label}>{Message.REIMBURSEMENT_END_DATE}</Text>
+                                            <Text style={styles.text}>{this.props.state.applyEndTime}</Text>
+                                        </View>
+                                        <View style={styles.row}>
+                                            <Text style={styles.label}>{Message.REIMBURSEMENT_BUSINESS_DAY}</Text>
+                                            <Text
+                                                style={styles.text}>{this.props.state.travelDays ? this.props.state.travelDays + '天' : ''}</Text>
+                                        </View>
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            marginTop: ScreenUtil.scaleSize(20)
+                                        }}>
+                                            <View style={{
+                                                height: ScreenUtil.scaleSize(40),
+                                                justifyContent: 'center',
+                                            }}>
+                                                <Text style={styles.label}>{Message.NEW_RE_BUSINESS_CITY}</Text>
+                                            </View>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(9),
+                                                color: '#666666',
+                                                lineHeight: ScreenUtil.scaleSize(40),
+                                                width: ScreenUtil.scaleSize(450),
+                                            }}>{this.props.state.applyCity}</Text>
+                                        </View>
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            marginTop: ScreenUtil.scaleSize(20)
+                                        }}>
+                                            <View style={{
+                                                height: ScreenUtil.scaleSize(40),
+                                                justifyContent: 'center',
+                                            }}>
+                                                <Text
+                                                    style={styles.label}>{Message.REIMBURSEMENT_REASON_FOR_TRIP_FEE}</Text>
+                                            </View>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(9),
+                                                color: '#666666',
+                                                lineHeight: ScreenUtil.scaleSize(40),
+                                                width: ScreenUtil.scaleSize(450),
+                                            }}>{this.props.state.expenseDesc}</Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        marginTop: ScreenUtil.scaleSize(20)
+                                    }}>
+                                        <View style={{
+                                            height: ScreenUtil.scaleSize(40),
+                                            justifyContent: 'center',
+                                        }}>
+                                            <Text style={styles.label}>{Message.REIMBURSEMENT_REASON}</Text>
+                                        </View>
+                                        <Text style={{
+                                            fontSize: ScreenUtil.setSpText(9),
+                                            color: '#666666',
+                                            lineHeight: ScreenUtil.scaleSize(40),
+                                            width: ScreenUtil.scaleSize(450),
+                                        }}>{this.props.state.expenseDesc}</Text>
+                                    </View>
+                                )
+                            }
+                            <FlatList
+                                data={this.props.state.applyDetail}
+                                renderItem={({item, index}) => (
+                                    <View style={styles.detailView}>
+                                        <View style={{height: ScreenUtil.scaleSize(33), justifyContent: 'center'}}>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(7),
+                                                color: '#ABABAB',
+                                            }}>{Message.NEW_RE_DETAIL + ' (' + (index + 1) + ')'}</Text>
+                                        </View>
+                                        <View style={[styles.row, {marginTop: ScreenUtil.scaleSize(30)}]}>
+                                            <Text style={styles.detailLabel}>{Message.NEW_RE_COST_TYPE}</Text>
+                                            <Text style={styles.text}>{item.expenseNameTwo}</Text>
+                                        </View>
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            marginTop: ScreenUtil.scaleSize(25),
+                                        }}>
+                                            <Text style={styles.detailLabel}>{Message.NEW_RE_COST_DETAIL}</Text>
+                                            <View style={{
+                                                width: ScreenUtil.scaleSize(400),
+                                            }}>
+                                                {item.detail == '' ? null :
+                                                    <TextInput
+                                                        editable={false}
+                                                        multiline={true}
+                                                        autoGrow={true}
+                                                        minHeight={ScreenUtil.scaleSize(40)}
+                                                        maxHeight={ScreenUtil.scaleSize(750)}
+                                                        value={item.detail}
+                                                        placeholderTextColor="#ABABAB"
+                                                        underlineColorAndroid="transparent"
+                                                        style={{
+                                                            textAlign: 'left',
+                                                            fontSize: ScreenUtil.setSpText(9),
+                                                            color: '#666666',
+                                                            textAlignVertical: 'top',
+                                                            paddingTop: 0,
+                                                            paddingBottom: 0,
+                                                            paddingLeft: 0,
+                                                        }}/>}
+                                            </View>
+                                        </View>
+                                        <View style={styles.row}>
+                                            <Text style={styles.detailLabel}>{Message.NEW_RE_INVOICE_DETAIL}</Text>
+                                        </View>
+                                        <FlatList
+                                            data={item.bizExpenseBillList}
+                                            renderItem={({item, index}) => (
+                                                <TouchableOpacity onPress={() => {
+                                                    this.props.navigateInvoiceDetails({
+                                                        uuid: item.invoiceUUID,
+                                                        invoiceTypeCode: item.invoiceType,
+                                                        fromReDetail: true
+                                                    })
+                                                }} style={styles.invoiceDetail}>
+                                                    <View style={{
+                                                        flexDirection: 'row',
+                                                    }}>
+                                                        <View style={{
+                                                            flexDirection: 'row',
+                                                            height: ScreenUtil.scaleSize(40),
+                                                            alignItems: 'center',
+                                                            width: ScreenUtil.scaleSize(305),
+                                                        }}>
+                                                            <Text
+                                                                style={styles.invoiceLabel}>{Message.NEW_RE_INVOICE_DATE + ':'}</Text>
+                                                            <Text
+                                                                style={styles.text}>{item.invoiceDateStr ? item.invoiceDateStr.substring(0, 10) : ''}</Text>
+                                                        </View>
+                                                        <View style={{
+                                                            flexDirection: 'row',
+                                                            height: ScreenUtil.scaleSize(40),
+                                                            alignItems: 'center',
+                                                            width: ScreenUtil.scaleSize(305),
+                                                        }}>
+                                                            <Text
+                                                                style={styles.invoiceLabel}>{Message.NEW_RE_INVOICE_AMOUNT + ':'}</Text>
+                                                            <Text
+                                                                style={styles.text}>{parseFloat(item.invoiceAmount).toFixed(2)}</Text>
+                                                        </View>
+                                                    </View>
+                                                    <View style={{
+                                                        flexDirection: 'row',
+                                                    }}>
+                                                        <View style={{
+                                                            flexDirection: 'row',
+                                                            height: ScreenUtil.scaleSize(40),
+                                                            alignItems: 'center',
+                                                            marginTop: ScreenUtil.scaleSize(20),
+                                                        }}>
+                                                            <Text
+                                                                style={styles.invoiceLabel}>{Message.NEW_RE_DETAIL + ':'}</Text>
+                                                            {
+                                                                Util.contains(['01', '02', '04', '10', '11'], item.invoiceType) ? (
+                                                                    <Text
+                                                                        style={styles.text}>{this.renderInvoiceDetail(item.invoiceDetail)}</Text>
+                                                                ) : (
+                                                                    <Text
+                                                                        style={styles.text}>{Util.getInvoiceTypeName(item.invoiceType)}</Text>
+                                                                )
+                                                            }
+                                                        </View>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            )}
+                                        />
+                                        <View style={styles.row}>
+                                            <Text
+                                                style={styles.detailLabel}>{Message.NEW_RE_INVOICE_DETAIL_AMOUNT}</Text>
+                                            <Text
+                                                style={[styles.text, {color: '#FFAA00'}]}>{(item.totalAmount == '' ? '' : Message.MONEY + item.totalAmount)}</Text>
+                                        </View>
+                                        <View style={styles.row}>
+                                            <Text style={styles.detailLabel}>{Message.NEW_RE_INVOICE_ACCOUNT}</Text>
+                                            <Text
+                                                style={styles.text}>{item.totalNum ? item.totalNum + Message.NEW_RE_INVOICE_ACCOUNT_UNIT : ''}</Text>
+                                        </View>
+                                    </View>
                                 )}
                             />
-                        </View>
-                        <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]}/>
-                        <View style={styles.row}>
-                            <Text style={[styles.label]}>{Message.REIMBURSEMENT_TOTAL_AMOUNT}</Text>
-                            <Text style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.applyAmount ==''?'':Message.MONEY+ parseFloat(this.props.state.applyAmount).toFixed(2)}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.REIMBURSEMENT_TOTAL_INVOICE}</Text>
-                            <Text
-                                style={styles.text}>{this.props.state.invoiceTotalNum + Message.NEW_RE_INVOICE_ACCOUNT_UNIT}</Text>
-                        </View>
-                    </View>
-
-                    {
-                        this.props.state.applyStatus == 0 ? (
-                            null
-                        ) : (
+                            {
+                                this.props.state.applyTypeCode == '1' ? (
+                                    <View style={styles.row}>
+                                        <Text style={styles.label}>{Message.NEW_RE_ASSISTANCE}</Text>
+                                        <Text
+                                            style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.travelBill ? (Message.MONEY + this.props.state.travelBill) : ''}</Text>
+                                    </View>
+                                ) : null
+                            }
                             <View style={{
-                                paddingHorizontal: ScreenUtil.scaleSize(30),
-                                paddingTop: ScreenUtil.scaleSize(10),
                                 marginTop: ScreenUtil.scaleSize(20),
-                                backgroundColor: '#FFFFFF',
+                                flexDirection: 'row',
                             }}>
                                 <View style={{
                                     height: ScreenUtil.scaleSize(40),
                                 }}>
-                                    <Text style={styles.text}>{Message.APPROVAL}</Text>
+                                    <Text style={styles.label}>{Message.NEW_RE_ATTACHMENT}</Text>
                                 </View>
                                 <FlatList
-                                    data={this.props.state.approvalRecordList}
+                                    data={this.props.state.fileList}
                                     renderItem={({item, index}) => (
-                                        this.renderApplication(item, index)
+                                        <TouchableOpacity style={{
+                                            flexDirection: 'row',
+                                            height: ScreenUtil.scaleSize(66),
+                                            marginTop: ScreenUtil.scaleSize(index == 0 ? 0 : 40),
+                                            alignItems: 'center',
+                                        }} onPress={() => {
+                                            this.previewDocument(item);
+                                        }}>
+                                            {this.renderFileIcon(item.fileType)}
+                                            <View style={{
+                                                marginLeft: ScreenUtil.scaleSize(20),
+                                                flex: 1,
+                                            }}>
+                                                <Text style={{
+                                                    fontSize: ScreenUtil.setSpText(7),
+                                                    color: '#666666',
+                                                }} numberOfLines={1}>{item.fileName}</Text>
+                                                <Text style={{
+                                                    fontSize: ScreenUtil.setSpText(7),
+                                                    color: '#666666'
+                                                }} numberOfLines={1}>{item.fileSize + 'KB'}</Text>
+                                            </View>
+                                        </TouchableOpacity>
                                     )}
                                 />
                             </View>
-                        )
-                    }
-                </ScrollView>
-                {this.renderBottom()}
-            </View>
+                            <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]}/>
+                            <View style={styles.row}>
+                                <Text style={[styles.label]}>{Message.REIMBURSEMENT_TOTAL_AMOUNT}</Text>
+                                <Text
+                                    style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.applyAmount == '' ? '' : Message.MONEY + parseFloat(this.props.state.applyAmount).toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>{Message.REIMBURSEMENT_TOTAL_INVOICE}</Text>
+                                <Text
+                                    style={styles.text}>{this.props.state.invoiceTotalNum + Message.NEW_RE_INVOICE_ACCOUNT_UNIT}</Text>
+                            </View>
+                        </View>
+
+                        {
+                            this.props.state.applyStatus == 0 ? (
+                                null
+                            ) : (
+                                <View style={{
+                                    paddingHorizontal: ScreenUtil.scaleSize(30),
+                                    paddingTop: ScreenUtil.scaleSize(10),
+                                    marginTop: ScreenUtil.scaleSize(20),
+                                    backgroundColor: '#FFFFFF',
+                                }}>
+                                    <View style={{
+                                        height: ScreenUtil.scaleSize(40),
+                                    }}>
+                                        <Text style={styles.text}>{Message.APPROVAL}</Text>
+                                    </View>
+                                    <FlatList
+                                        data={this.props.state.approvalRecordList}
+                                        renderItem={({item, index}) => (
+                                            this.renderApplication(item, index)
+                                        )}
+                                    />
+                                </View>
+                            )
+                        }
+                    </ScrollView>
+                    {this.renderBottom()}
+                </View>
+            </SafeAreaView>
         )
     }
 }
@@ -1453,7 +1485,7 @@ function mapDispatchToProps(dispatch) {
         navigateInvoiceDetails: navigateInvoiceDetails,
         resetApplicationList: resetApplicationList,
         sendEmail: sendEmail,
-        navigateApplicationList:navigateApplicationList,
+        navigateApplicationList: navigateApplicationList,
         changeAppState: changeAppState,
     }, dispatch);
 }
@@ -1463,7 +1495,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(ReimbursementDetail)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F3F3'
+        backgroundColor: 'white'
     },
     topView: {
         paddingHorizontal: ScreenUtil.scaleSize(30),

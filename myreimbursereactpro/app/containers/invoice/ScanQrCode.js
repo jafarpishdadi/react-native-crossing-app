@@ -34,6 +34,7 @@ import Camera from "react-native-camera";
 import Header from "../../containers/common/CommonHeader";
 import Util from "../../utils/Util";
 import Loading from "../common/Loading";
+import SafeAreaView from "react-native-safe-area-view";
 
 var QrCodeModule = NativeModules.QrCodeModule;
 var RNBridgeModule = NativeModules.RNBridgeModule;
@@ -83,7 +84,7 @@ class ScanQrCode extends Component {
             duration: 3000,
         }).start(
             () => {
-                this.startAnimation()
+                this.props.scanQrCode.readQrCodeEnable && this.startAnimation()
             }
         );
     }
@@ -93,6 +94,7 @@ class ScanQrCode extends Component {
      * @param component 当前组件
      */
     onBack(component) {
+        component.props.changeState({readQrCodeEnable:false});
         component.props.back();
     }
 
@@ -140,7 +142,7 @@ class ScanQrCode extends Component {
         const scanViewTop = (deviceHeight - scanViewHeight) / 2 - ScreenUtil.scaleSize(100);
 
         return (
-            <View style={[styles.container, {backgroundColor: '#F3F3F3'}]}>
+            <SafeAreaView style={[styles.container, {backgroundColor: 'white'}]}>
                 <Header
                     titleText={Message.SCAN_QR_CODE_TITLE}
                     thisComponent={this}
@@ -242,7 +244,7 @@ class ScanQrCode extends Component {
 
                         )
                 }
-            </View>
+            </SafeAreaView>
         );
     }
 }

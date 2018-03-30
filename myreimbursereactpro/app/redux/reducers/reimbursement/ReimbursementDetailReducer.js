@@ -17,7 +17,7 @@ const initialState = {
 	applyTime: '',      //报销时间
 	applyAmount: '',        //金额
 	applyType: '',        //报销费用类别
-	applyTypeCode: '',       //报销费用类别代码
+	applyTypeCode: '',       //报销费用类别代码、报销单的模板编号也使用该参数
 	applyStartTime: '',     //开始时间
 	applyEndTime: '',       //结束时间
 	travelDays: 0,      //出差天数

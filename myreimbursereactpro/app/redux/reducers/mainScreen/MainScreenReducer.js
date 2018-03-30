@@ -1,7 +1,7 @@
 /**
  * Created by sky.qian on 11/17/2017.
  */
-import * as types from '../../../constant/ActionTypes';
+import * as types from "../../../constant/ActionTypes";
 
 const initialState = {
 	isLoading: false,       //加载中

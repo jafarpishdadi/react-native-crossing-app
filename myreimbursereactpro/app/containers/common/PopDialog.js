@@ -11,12 +11,11 @@ import {
     StyleSheet,
     StatusBar,
     Platform,
-    Modal,
     TouchableOpacity,
     TouchableWithoutFeedback,
     PixelRatio,
+    Modal
 } from "react-native";
-// import Modal from 'react-native-modalbox';
 import ScreenUtil, {deviceWidth} from "../../utils/ScreenUtil";
 import Message from "./../../constant/Message";
 
@@ -27,12 +26,13 @@ export default class PopDialog extends React.Component {
         scanClick: PropTypes.func,          // 点击扫描
         photoClick: PropTypes.func,         // 点击拍照
         albumClick: PropTypes.func,         // 点击相册
-        thirdItemName:PropTypes.string,     // 第三个选项的标题
+        thirdItemName: PropTypes.string,     // 第三个选项的标题
         cancelClick: PropTypes.func,        // 点击取消
+        backClick: PropTypes.func,          //点击阴影
     };
 
     static defaultProps = {
-        thirdItemName:Message.INVOICE_LIST_ALBUM,
+        thirdItemName: Message.INVOICE_LIST_ALBUM,
         showVisible: false,
     };
 
@@ -43,34 +43,42 @@ export default class PopDialog extends React.Component {
         this._onPhotoClick = this._onPhotoClick.bind(this);
         this._onAlbumClick = this._onAlbumClick.bind(this);
         this._onClose = this._onClose.bind(this);
+        this._onBackClick = this._onBackClick.bind(this);
     }
 
     // 点击开始扫描
-    _onScanClick () {
+    _onScanClick() {
         if (this.props.scanClick) {
             this.props.scanClick(this.props.thisComponent);
         }
     }
 
     // 点击进行拍照
-    _onPhotoClick () {
+    _onPhotoClick() {
         if (this.props.photoClick) {
             this.props.photoClick(this.props.thisComponent);
         }
     }
 
     // 点击打开相册
-    _onAlbumClick () {
+    _onAlbumClick() {
         if (this.props.albumClick) {
             this.props.albumClick(this.props.thisComponent);
         }
     }
 
     // 点击触发关闭弹窗
-    _onClose () {
+    _onClose() {
         if (this.props.cancelClick) {
             this.props.cancelClick(this.props.thisComponent);
             this.props.showVisible = false;
+        }
+    }
+
+    // 点击阴影关闭弹窗
+    _onBackClick() {
+        if (this.props.backClick) {
+            this.props.backClick(this.props.thisComponent);
         }
     }
 
@@ -79,42 +87,52 @@ export default class PopDialog extends React.Component {
             <View style={styles.background}>
                 <TouchableOpacity
                     style={styles.itemClick}
-                    onPress={() => {this._onScanClick()}}>
+                    onPress={() => {
+                        this._onScanClick()
+                    }}>
                     <Text style={styles.itemText}>{Message.INVOICE_LIST_SCAN}</Text>
                 </TouchableOpacity>
                 <View style={styles.separatorLine}/>
                 <TouchableOpacity
                     style={styles.itemClick}
-                    onPress={() => {this._onPhotoClick()}}>
+                    onPress={() => {
+                        this._onPhotoClick()
+                    }}>
                     <Text style={styles.itemText}>{Message.INVOICE_LIST_PHOTO}</Text>
                 </TouchableOpacity>
                 <View style={styles.separatorLine}/>
                 <TouchableOpacity
                     style={styles.itemClick}
-                    onPress={() => {this._onAlbumClick()}}>
+                    onPress={() => {
+                        this._onAlbumClick()
+                    }}>
                     <Text style={styles.itemText}>{this.props.thirdItemName}</Text>
                 </TouchableOpacity>
                 <View style={styles.separatorLine}/>
                 <TouchableOpacity
                     style={styles.itemClick}
-                    onPress={() => {this._onClose()}}>
+                    onPress={() => {
+                        this._onClose()
+                    }}>
                     <Text style={styles.cancelText}>{Message.CANCEL}</Text>
                 </TouchableOpacity>
             </View>
         )
     }
 
-    render () {
+    render() {
         return (
             <Modal
                 visible={this.props.showVisible}
                 transparent={true}
-                onRequestClose={() => {this._onClose()}}
+                onRequestClose={() => {
+                    this._onBackClick()
+                }}
             >
                 <TouchableWithoutFeedback
-                    style={{flex:1}}
+                    style={{flex: 1}}
                     onPress={() => {
-                        this._onClose()
+                        this._onBackClick()
                     }}
                 >
                     <View style={styles.container}>
@@ -127,13 +145,13 @@ export default class PopDialog extends React.Component {
 }
 
 const styles = StyleSheet.create({
-    container:{
-        flex:1,
+    container: {
+        flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.45)',
         zIndex: 999
     },
     background: {
-        flex:1,
+        flex: 1,
         height: ScreenUtil.scaleSize(326),
         backgroundColor: '#FFFFFF',
         position: 'absolute',
@@ -160,7 +178,7 @@ const styles = StyleSheet.create({
     separatorLine: {
         width: deviceWidth - ScreenUtil.scaleSize(30) * 2,
         paddingHorizontal: ScreenUtil.scaleSize(30),
-        height: 1/PixelRatio.get(),
+        height: 1 / PixelRatio.get(),
         backgroundColor: '#DEDEDE',
     }
 });

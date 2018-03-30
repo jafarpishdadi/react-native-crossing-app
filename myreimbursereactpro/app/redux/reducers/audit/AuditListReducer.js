@@ -14,10 +14,13 @@ const initialState = {
     unapprovedLoadMore: true,   //是否加载更多
     alreadyApprovedPage:1,      //已审批页数
     alreadyApprovedLoadMore: true,  //是否加载更多
-    hasCopyToMeMsg: true,       //是否有抄送我信息
+    //hasCopyToMeMsg: false,       //是否有抄送我信息
     showFilter: false,      //是否显示过滤器
     applyType: '',      //单子种类
     copyToMe: [],       //抄送我
+    copyToMePage: 1,          //抄送我页数
+    copyToMeLoadMore: true,   //是否加载更多
+    unapprovedCount: 0,     //未审批数
 }
 
 const auditListReducer = (state = initialState, action) => {

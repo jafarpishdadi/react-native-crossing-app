@@ -2,6 +2,8 @@ import * as types from '../../../constant/ActionTypes';
 import API from "../../../utils/API";
 import HttpUtil from "../../../network/HttpUtil";
 import Util from "../../../utils/Util";
+import {resetLoanList} from '../../../redux/actions/navigator/Navigator';
+import Message from '../../../constant/Message';
 
 export const changeState = (state) => {
     return {
@@ -16,11 +18,14 @@ export const initData = () => {
     }
 }
 
-export const loadData = () => {
+export const loadData = (params) => {
     return (dispatch) => {
         dispatch(changeState({
             isLoading: true,
         }))
+        if (params && params.source === 'LoanOrderDetail') {
+            dispatch(changeState(params.data));
+        }
         dispatch(getOrganization({organizationType: 'dep'}))
     }
 }
@@ -28,9 +33,9 @@ export const loadData = () => {
 /**
  * 语音识别
  */
-export const recogniseVoiceRecord = (type,expenseId,requestData) => {
+export const recogniseVoiceRecord = (requestData, callback) => {
     //var data = "voice=" + requestData.voice + "&length=" + requestData.length;
-    return (dispatch, getState) => {
+    return (dispatch) => {
         dispatch(changeState({
             isLoading: true,
         }));
@@ -42,31 +47,7 @@ export const recogniseVoiceRecord = (type,expenseId,requestData) => {
             }));
             if (status) {
                 if(ret.code == '00000'){
-                    const Reimbursement = getState().Reimbursement;
-                    //报销事由
-                    if(type == 0){
-                        var expenseDesc=Reimbursement.expenseDesc + ret.data.result;
-                        if(expenseDesc.length>300){
-                            expenseDesc = text.substring(0,299);
-                        }
-                        dispatch(changeState({
-                            LoanReason:expenseDesc
-                        }));
-                    }else if(type == 1){
-                        var bizExpenseTypeList = Reimbursement.bizExpenseTypeList;
-                        for(var i=0;i<bizExpenseTypeList.length;i++){
-                            if(expenseId == bizExpenseTypeList[i].expenseId){
-                                var detail = bizExpenseTypeList[i].detail + ret.data.result;
-                                if(detail.length>300){
-                                    detail = text.substring(0,299);
-                                }
-                                bizExpenseTypeList[i].detail = detail;
-                                dispatch(changeState({bizExpenseTypeList:bizExpenseTypeList}))
-                                break;
-                            }
-                        }
-                    }
-
+                    callback(ret.data.result);
                 }
             }
         })
@@ -131,6 +112,98 @@ export const getOrganization = (requestData) => {
                         organizationOriginalList: organizationList,
                         organizationList: organizationLists,
                     }));
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const saveLoan = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.SAVE_BORROW_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetLoanList());
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const resaveLoan = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.RE_SAVE_BORROW_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetLoanList());
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const submitLoan = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.SUBMIT_BORROW_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetLoanList());
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const resubmitLoan = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.RE_SUBMIT_BORROW_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetLoanList());
                 } else {
                     Util.showToast(ret.message);
                 }

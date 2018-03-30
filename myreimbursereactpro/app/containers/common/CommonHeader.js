@@ -5,6 +5,7 @@ import React, {Component} from "react";
 import PropTypes from 'prop-types';
 import {View, Text, Image, StyleSheet, StatusBar, Platform, TouchableOpacity, PixelRatio} from "react-native";
 import ScreenUtil, {deviceWidth} from "../../utils/ScreenUtil";
+import Util from "../../utils/Util";
 
 export default class CommonHeader extends React.Component {
 
@@ -144,10 +145,10 @@ const styles = StyleSheet.create({
         borderBottomColor: 'rgba(167,167,167,0.3)',
         //borderBottomWidth: Platform.OS == 'ios' ? 1 / PixelRatio.get() : 0,
 
-        shadowOffset: {width: 0, height: 0},
+        shadowOffset: {width: 0, height: 1},
         shadowColor: 'rgba(167,167,167,0.3)',
         shadowOpacity: 1,
-        shadowRadius: 2,
+        shadowRadius: 1,
         elevation: 1.5,
         //marginBottom: Platform.OS == 'ios' ? 0.8 : 0,
         zIndex: 500,

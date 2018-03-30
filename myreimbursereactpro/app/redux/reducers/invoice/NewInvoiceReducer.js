@@ -46,6 +46,10 @@ const initialState = {
 	invoiceDetail: '',      //货物或应税劳务
 	sellerName: '',      //销售方
 	remark: '',     //备注
+	reimburseState: '',
+	salerName: '',
+	checkState: '',
+	uuid: '',
 	saveModalVisible: false,       //保存对话框
 	reimbursementTypeList:[],		//报销类别
 

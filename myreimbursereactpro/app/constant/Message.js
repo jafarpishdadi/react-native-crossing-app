@@ -55,9 +55,10 @@ var Message = {
     AUTHORIZE_CAMERA: '请授予应用访问相机相册的权限',
     AUTHORIZE_SET_PERMISSIONS: '设置权限',
     AUTHORIZE_CAMERA_AND_PHOTO_ALBUM: '请授予应用访问相机和相册的权限',
-    REIMBURSEMENT: '报销单',
+    MORE_NOTICE: '其他企业下还有待处理的消息,请切换企业查看',
+    REIMBURSEMENT_ORDER: '报销单',
     LOAN: '借款单',
-    TRAVEL_REIMBURSEMENT: '差旅报销单',
+    TRAVEL_REIMBURSEMENT: '差旅申请单',
 
     //登录
     APP_NAME:'大象报销',
@@ -133,7 +134,7 @@ var Message = {
     YUAN: '元',
     TIAO: '条',
     ZHANG: '张',
-    HOMEPAGE_TRAVEL: '出差申请',
+    HOMEPAGE_TRAVEL: '差旅申请',
     HOMEPAGE_LOAN: '借款申请',
     NO_REPAY_AMOUNT: '未还款累计',
 
@@ -149,6 +150,8 @@ var Message = {
     //首页
     HOME_PAGE_FOUND_NEW_VERSION: '发现新版本',
     MINE_UPDATE_VERSION_CONTENT: '升级新版本，体验更多功能',
+    LOGIN_DOWNLOADING: '自动更新中',
+    LOGIN_DOWNLOAD_FAIL: '下载失败，请稍后重试',
     MINE_UPDATE_VERSION_NEXT_TIME: '下次再说',
     MINE_UPDATE_VERSION_NOW: '立即升级',
     IS_BEING_UPDATE: '正在更新',
@@ -209,6 +212,7 @@ var Message = {
     REIMBURSEMENT_PASS: '审批通过',
     REIMBURSEMENT_COMMENT: '被评论',
     NOTICES_IS_NULL: '消息为空',
+    TARGET_CITY: '目的地:',
 
     //新建报销单
     CANCEL_REIMBURSEMENT:'确定撤回该报销单?',
@@ -265,6 +269,7 @@ var Message = {
     NEW_RE_FILE_TYPE: '文件类型不支持',
     NEW_RE_ALREADY_IN_REIMBURSEMENT: '该发票已被保存在该报销单中',
     NEW_RE_GET_FILE_FAIL: '获取文件失败',
+    NEW_RE_OVER_ZERO_AMOUNT: '请输入大于0的数字',
 
     //找回密码
     FIND_PASSWORD: '找回密码',
@@ -278,7 +283,7 @@ var Message = {
     FIND_PASSWORD_CHECK_CHECK_PASSWORD:'请输入确认密码',
 
     //我的申请
-    APPLICATION_TITLE: '我的申请',
+    APPLICATION_TITLE: '我的报销申请',
     APPLICATION_REASON: '报销事由:',
     APPLICATION_TYPE: '报销类别:',
     APPLICATION_AMOUNT: '报销金额:',
@@ -291,6 +296,7 @@ var Message = {
     APPLICATION_IN_AUDIT:'审批中',
     APPLICATION_REJECT:'已驳回',
     APPLICATION_AUDIT_PASS:'审批通过',
+    APPLICATION_IS_REDUCE: '核销借款',
 
     //我的审批
     AUDIT_TITLE: '我的审批',
@@ -300,6 +306,8 @@ var Message = {
     AUDIT_REIMBURSEMENT: '报销单',
     AUDIT_LOAN: '借款单',
     AUDIT_TRAVEL: '差旅申请',
+    AUDIT_NOT_COMPLETED: '未完成',
+    AUDIT_ALREADY_COMPLETED: '已完成',
 
     //报销详情
     REIMBURSEMENT_PASS: '审批通过',
@@ -321,7 +329,7 @@ var Message = {
     REIMBURSEMENT_TOTAL_AMOUNT: '报销总金额',
     REIMBURSEMENT_TOTAL_INVOICE: '发票总张数',
     REIMBURSEMENT_REASON: '报销事由',
-    REIMBURSEMENT_REASON_FOR_TRIP_FEE:'报销说明',
+    REIMBURSEMENT_REASON_FOR_TRIP_FEE:'报销事由',
     REIMBURSEMENT_APPLY: '发起申请',
     REIMBURSEMENT_AGREE: '已同意',
     REIMBURSEMENT_REJECT_REASON: '驳回原因',
@@ -333,6 +341,8 @@ var Message = {
     REIMBURSEMENT_IMG_COUNT: '最多上传5张图片',
     REIMBURSEMENT_FILE_COUNT: '最多上传3个附件',
     REIMBURSEMENT_EMAIL_SUCCESS_MSG: '您的报销单已发送到邮箱，请下载打印',
+    TRAVEL_APPLY_EMAIL_SUCCESS_MSG: '您的差旅申请单已发送到邮箱，请下载打印',
+    MAX_TRAVEL_PARTNER_COUNT: '同行人不能超过30位',
 
     //票夾
     INVOICE_LIST_TITLE:'票夹',
@@ -342,7 +352,7 @@ var Message = {
     INVOICE_LIST_IN_REIMBURSEMENT:'报销中',
     INVOICE_LIST_REIMBURSEMENT_ED:'已报销',
     INVOICE_LIST_CREATE_DATE:'开票时间',
-    INVOICE_LIST_INVOICE_TYPE_TAXI:'打车票',
+    INVOICE_LIST_INVOICE_TYPE_TAXI:'出租车票',
     INVOICE_LIST_INVOICE_TYPE_TRAIN:'火车票',
     INVOICE_LIST_INVOICE_TYPE_PLANE:'飞机票',
     INVOICE_LIST_INVOICE_TYPE_FOOD:'餐票',
@@ -364,6 +374,7 @@ var Message = {
     INVOICE_DETAIL_MOME:'备注说明',
     INVOICE_DETAIL_IMAGE:'图片',
     INVOICE_DETAIL_CHECK_FAILED:'未查验到结果',
+    INVOICE_DETAIL_FLUSHED_INVOICE_REIMBURSED: '红票无法报销！',
 
     //火车票或者飞机票发票详情
     TRAIN_OR_PLANE_INVOICE_DETAIL_FROM:'出发城市',
@@ -451,7 +462,7 @@ var Message = {
     INVOICE_TYPE_NAME_11: '增值税普通发票(卷式)',
     INVOICE_TYPE_NAME_03: '机动车销售统一发票',
     INVOICE_TYPE_NAME_02: '货运运输业增值税专用发票',
-    INVOICE_TYPE_NAME_91: '打车票',
+    INVOICE_TYPE_NAME_91: '出租车票',
     INVOICE_TYPE_NAME_92: '火车票',
     INVOICE_TYPE_NAME_93: '飞机票',
     INVOICE_TYPE_NAME_94: '汽车票',
@@ -496,7 +507,11 @@ var Message = {
 
     //选择抄送人
     SELECT_COPY_PERSON_TITLE: '选择抄送人',
+    SELECT_TOGETHER_PERSON_TITLE: '选择同行人',
     SELECT_COPY_PERSON_SEARCH: '搜索',
+    SELECT_COPY_PERSON_NO_MSG: '请选择抄送人',
+    SELECT_TOGETHER_PERSON_NO_MSG: '请选择同行人',
+    SELECT_COPY_PERSON_NO_RESULT: '未搜索到对应结果',
 
 
     //成本中心
@@ -527,23 +542,30 @@ var Message = {
     NEW_TRAVEL_APPLY_SELECT_CITY: '选择目的城市',
     NEW_TRAVEL_APPLY_EXPECTED_COST: '预计花费',
     NEW_TRAVEL_APPLY_PLEASE_INPUT_EXPECTED_COST: '请输入预计花费',
-    NEW_TRAVEL_APPLY_PEER_PERPLE: '同行人',
-    NEW_TRAVEL_APPLY_PLEASE_INPUT_PEER_PERPLE: '请输入出差同行人',
+    NEW_TRAVEL_APPLY_PEER_PEOPLE: '同行人',
+    NEW_TRAVEL_APPLY_PLEASE_INPUT_PEER_PEOPLE: '请选择出差同行人',
     NEW_TRAVEL_APPLY_ATTACHMENT: '附件',
     NEW_TRAVEL_APPLY_COPY: '抄送',
     NEW_TRAVEL_APPLY_SELECT_COPY_PERSON: '请选择抄送人',
     NEW_TRAVEL_IS_APPLY_COPY_PERSON: '是否确定该抄送人？',
     NEW_TRAVEL_IS_SAVE_INFO: '是否保存该差旅申请单信息？',
+    NEW_TRAVEL_PRE_AMOUNT_VALIDATION: '请输入数字！',
+    NEW_TRAVEL_OVER_ZERO_NUM: '请输入大于0的数字',
 
     //差旅申请单详情
-    TRAVEL_APPLY_DETAIL: ' 差旅明细',
-    TRAVEL_APPLY_DETAIL_NUMBER: ' 差旅申请单号',
-    TRAVEL_APPLY_DETAIL_APPLY_TIME: ' 申请时间',
+    TRAVEL_APPLY_DETAIL: '差旅明细',
+    TRAVEL_APPLY_DETAIL_NUMBER: '差旅申请单号',
+    TRAVEL_APPLY_DETAIL_APPLY_TIME: '申请时间',
+    TRAVEL_APPLY_DETAIL_CANCEL_CONFIRM: '确定撤回该差旅申请？',
 
     //借款单列表页面
     LOAN_LIST_TITLE: '我的借款申请',
     LOAN_ORDER_LIST_DATE: '日期',
-    LOAN_DELETE_CONFIRM: '是否删除此借款单？',
+    LOAN_DELETE_CONFIRM: '确定删除此借款单？',
+    LOAN_REASON: '借款事由：',
+    LOAN_AMOUNT: '借款金额：',
+    NO_REPAY: '未还完',
+    HAVE_REPAY: '已还完',
 
     //借款单详情页面
     LOAN_ORDER_DETAIL_AGREE_CONFIRM: '确定同意该申请？',
@@ -567,18 +589,25 @@ var Message = {
     //选择城市页面
     CHOOSE_CITY_TITLE: '请选择城市',
     CHOOSE_CITY_SEARCH: '搜索',
+    CHOOSE_CITY_CHECK_LIST: '请至少选择一个城市',
+    CHOOSE_CITY_CHECK_MOST: '目的城市不能超过20个',
+    CHOOSE_CITY_HOY: '热门',
 
     //新建借款单
     NEW_LOAN_BACK_MSG: '是否保存该借款单信息？',
     NEW_LOAN_TITLE: '新建借款单',
+    EDIT_LOAN_TITLE: '修改借款单',
     NEW_LOAN_REASON: '借款事由',
     NEW_LOAN_REASON_PLACEHOLDER: '请输入借款事由',
     NEW_LOAN_AMOUNT: '借款金额',
     NEW_LOAN_AMOUNT_PLACEHOLDER: '请输入借款金额',
     NEW_LOAN_REMARK: '备注',
     NEW_LOAN_REMARK_PLACEHOLDER: '请输入备注',
+    NEW_LOAN_AMOUNT_VALIDATION: '请输入数字！',
+    NEW_LOAN_OVER_ZERO_AMOUNT: '请输入大于0的数字',
     //差旅申请列表
-    TRAVEL_APPLY_LIST_TITLE: '我的申请',
+    TRAVEL_APPLY_LIST_TITLE: '我的差旅申请',
+    TRAVEL_APPLY_LIST_DELETE_CONFIRM: '确定删除此差旅申请？',
 }
 
 module.exports = Message;

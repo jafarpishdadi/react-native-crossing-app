@@ -8,6 +8,8 @@ import Util from '../../../utils/Util';
 import Message from '../../../constant/Message';
 import {back} from '../../../redux/actions/navigator/Navigator';
 import {loadData as loadReimbursement} from '../../../redux/actions/reimbursement/ReimbursementDetail';
+import {loadData as loadLoan} from '../../../redux/actions/loan/LoanOrderDetail';
+import {loadData as loadTravelApply} from '../../../redux/actions/travelApply/TravelApplyDetail';
 
 export const changeState = (state) => {
     return {
@@ -26,7 +28,7 @@ export const initData = () => {
     }
 }
 
-export const addComment = (requestData) => {
+export const addComment = (requestData, templateNo) => {
     return dispatch => {
         dispatch(changeState({
             isLoading: true
@@ -43,7 +45,14 @@ export const addComment = (requestData) => {
                         attachmentList: [],
                         isLoading: false,
                     }))
-                    dispatch(loadReimbursement(requestData.commentContent.expenseNo));
+                    if (templateNo == '100001' || templateNo == '1') {
+                        dispatch(loadReimbursement(requestData.commentContent.billNo));
+                    } else if (templateNo == '100003') {
+                        dispatch(loadLoan(requestData.commentContent.billNo))
+                    } else if (templateNo == '100004') {
+                        dispatch(loadTravelApply(requestData.commentContent.billNo))
+                    }
+
                     dispatch(back());
                 } else {
                     Util.showToast(ret.message);

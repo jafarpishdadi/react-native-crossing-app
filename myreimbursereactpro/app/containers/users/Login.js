@@ -26,7 +26,7 @@ import Message from "../../constant/Message";
 import ScreenUtil from "../../utils/ScreenUtil";
 import Util from '../../utils/Util';
 import {CustomStyles} from '../../css/CustomStyles';
-
+import SafeAreaView from "react-native-safe-area-view";
 var MyDeviceInfoModule = NativeModules.MyDeviceInfoModule;
 
 class Login extends Component {
@@ -52,13 +52,10 @@ class Login extends Component {
                 this.props.changeState({
                     macAddress: userInfo.mac,
                     loginName: userInfo.phoneNumber,
-                    password: userInfo.password
+                    password: userInfo.password,
+                    passwordText: userInfo.password.replace(/[^]/g, '•'),
                 });
-                if (Util.checkIsEmptyString(userInfo)) {
-                    Util.showToast(Message.MAC_ERROR)
-                } else {
-                    this.props.doLogin(userInfo);
-                }
+                this.props.doLogin(userInfo);
             }
         })
     }
@@ -94,9 +91,7 @@ class Login extends Component {
             Util.showToast(Message.REGISTER_EMPTY_PHONE)
         } else if (Util.checkIsEmptyString(password)) {
             Util.showToast(Message.LOGIN_EMPTY_PWD);
-        } /*else if (!Util.checkPhone(loginName)) {
-            Util.showToast(Message.FORMAT_ERROR_PHONE);
-        }*/else {
+        } else {
             MyDeviceInfoModule.getLocalMacAddressFromIp().then((macAddress) => {
                 if (macAddress) {
                     that.props.doLogin({
@@ -105,7 +100,12 @@ class Login extends Component {
                         "password": password
                     })
                 } else {
-                    Util.showToast(Message.MAC_ERROR);
+                    //Util.showToast(Message.MAC_ERROR);
+                    that.props.doLogin({
+                        "mac": '02:00:00:00:00:00',
+                        "phoneNumber": loginName,
+                        "password": password
+                    })
                 }
             })
         }
@@ -114,88 +114,90 @@ class Login extends Component {
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         return (
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+            <SafeAreaView  style={styles.container} forceInset={{ top: 'always' }}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
 
-                    <CommonLoading isShow={this.props.login.isLoading}/>
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(120)}}>
-                        <View style={styles.logoView}>
-                            <Image source={require('./../../img/login/logo.png')} style={styles.logoIcon}/>
-                            <Text style={styles.logoTxt}>{Message.APP_NAME}</Text>
-                        </View>
-                        <View style={[styles.inputRow, {marginTop: ScreenUtil.scaleSize(80)}]}>
-                            <Text style={styles.inputLabel}>{Message.LOGIN_ACCOUNT}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_INPUT_PHONE}
-                                maxLength={11}
-                                placeholderTextColor="#A5A5A5"
-                                underlineColorAndroid="transparent"
-                                ref="phone"
-                                selectionColor="#FFAA00"
-                                keyboardType="numeric"
-                                value={this.props.login.loginName}
-                                onChangeText={(text) => {
-                                    this.props.changeState({loginName: text})
+                        <CommonLoading isShow={this.props.login.isLoading}/>
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(120)}}>
+                            <View style={styles.logoView}>
+                                <Image source={require('./../../img/login/logo.png')} style={styles.logoIcon}/>
+                                <Text style={styles.logoTxt}>{Message.APP_NAME}</Text>
+                            </View>
+                            <View style={[styles.inputRow, {marginTop: ScreenUtil.scaleSize(80)}]}>
+                                <Text style={styles.inputLabel}>{Message.LOGIN_ACCOUNT}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_INPUT_PHONE}
+                                    maxLength={11}
+                                    placeholderTextColor="#A5A5A5"
+                                    underlineColorAndroid="transparent"
+                                    ref="phone"
+                                    selectionColor="#FFAA00"
+                                    keyboardType="numeric"
+                                    value={this.props.login.loginName}
+                                    onChangeText={(text) => {
+                                        this.props.changeState({loginName: text})
+                                    }}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.LOGIN_PASSWORD}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.SET_PWD_INPUT}
+                                    maxLength={12}
+                                    placeholderTextColor="#A5A5A5"
+                                    underlineColorAndroid="transparent"
+                                    ref="password"
+                                    selectionColor="#FFAA00"
+                                    secureTextEntry={true}
+                                    value={this.props.login.passwordText}
+                                    onChangeText={(text) => {
+                                        let textTemp = text.replace('•', this.props.login.firstWord);
+                                        let password = textTemp;
+                                        let first = password.substring(0, 1);
+                                        textTemp = textTemp ? '•' + textTemp.substring(1) : '';
+                                        this.props.changeState({
+                                            password: password,
+                                            passwordText: textTemp,
+                                            firstWord: first,
+                                        })
+                                    }}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <TouchableOpacity
+                                style={styles.forgotView}
+                                onPress={() => {
+                                    this.props.navigateFindPassword()
                                 }}
-                                returnKeyType={'done'}/>
+                            >
+                                <Text style={styles.forgotTxt}>{Message.LOGIN_FORGET_PWD}</Text>
+                            </TouchableOpacity>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.LOGIN_PASSWORD}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.SET_PWD_INPUT}
-                                maxLength={12}
-                                placeholderTextColor="#A5A5A5"
-                                underlineColorAndroid="transparent"
-                                ref="password"
-                                selectionColor="#FFAA00"
-                                secureTextEntry={true}
-                                value={this.props.login.passwordText}
-                                onChangeText={(text) => {
-                                    let textTemp = text.replace('•', this.props.login.firstWord);
-                                    let password = textTemp;
-                                    let first = password.substring(0, 1);
-                                    textTemp = textTemp ? '•' + textTemp.substring(1) : '';
-                                    this.props.changeState({
-                                        password: password,
-                                        passwordText: textTemp,
-                                        firstWord: first,
-                                    })
-                                }}
-                                returnKeyType={'done'}/>
-                        </View>
-                        <View style={CustomStyles.separatorLine}/>
                         <TouchableOpacity
-                            style={styles.forgotView}
-                            onPress={() => {
-                                this.props.navigateFindPassword()
+                            style={{
+                                marginTop: ScreenUtil.scaleSize(200),
                             }}
-                        >
-                            <Text style={styles.forgotTxt}>{Message.LOGIN_FORGET_PWD}</Text>
+                            onPress={() => {
+                                this._onCheckPhone()
+                            }}>
+                            <Image
+                                style={styles.loginBtn}
+                                source={require('./../../img/login/login.png')}/>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.registerBtn]}
+                            onPress={() => {
+                                this.props.navigateToRegister()
+                            }}>
+                            <Text style={styles.registerBtnText}>{Message.LOGIN_REGISTER}</Text>
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={{
-                            marginTop: ScreenUtil.scaleSize(200),
-                        }}
-                        onPress={() => {
-                            this._onCheckPhone()
-                        }}>
-                        <Image
-                            style={styles.loginBtn}
-                            source={require('./../../img/login/login.png')}/>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.registerBtn]}
-                        onPress={() => {
-                            this.props.navigateToRegister()
-                        }}>
-                        <Text style={styles.registerBtnText}>{Message.LOGIN_REGISTER}</Text>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         );
     }
 }

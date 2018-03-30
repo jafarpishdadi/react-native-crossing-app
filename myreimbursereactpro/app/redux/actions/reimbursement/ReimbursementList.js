@@ -104,7 +104,8 @@ export const loadMoreReimbursement = (requestData, reimbursementList) => {
         }));
         return HttpUtil.postJson(API.GET_APPLICATION_LIST, requestData, dispatch, function (ret, status) {
             dispatch(changeState({
-                showLoading: false
+                showLoading: false,
+                loadMore: true,
             }));
             if (status) {
                 if (ret.status) {

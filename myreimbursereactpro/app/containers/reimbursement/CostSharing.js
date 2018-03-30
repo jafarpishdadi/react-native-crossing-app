@@ -35,6 +35,7 @@ import {
     refreshDeptData,
     refreshProjectData,
 } from "./../../redux/actions/reimbursement/CostSharing"
+import SafeAreaView from "react-native-safe-area-view";
 
 class CostSharing extends Component {
     static navigationOptions = ({navigation}) => ({
@@ -148,7 +149,7 @@ class CostSharing extends Component {
 
     render() {
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
                 <Header
                     titleText={Message.COST_SHARING_TITLE}
@@ -240,7 +241,7 @@ class CostSharing extends Component {
                     refreshing={this.props.state.isRefreshing}
                     renderItem={({item, index}) => this.renderDataItem(item, index)}
                 />
-            </View>
+            </SafeAreaView>
         )
     }
 }

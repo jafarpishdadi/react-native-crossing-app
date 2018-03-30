@@ -25,6 +25,7 @@ const initialState = {
     isLoading:false,
     imageBase64:'',
     reimbursementTypeList:[],
+    totalAmount: '',
 
     showDialog:false,
     imagePreView:true,          //是否需要显示预览图
@@ -32,7 +33,9 @@ const initialState = {
     alreadyInNewReimbursement:false,  //是否已经存在新建报销单中
     token: '',
 
-    showNoPermissionDialog:false
+    showNoPermissionDialog:false,
+
+    backDialogShow: false,      //背部阴影显示
 }
 
 const invoiceReducer = (state = initialState, action) => {

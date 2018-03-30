@@ -18,6 +18,8 @@ import {
     NativeModules,
     Animated,
     Platform,
+    PixelRatio,
+    Keyboard,
 } from "react-native";
 import {back, navigateReimbursementReply,} from "../../redux/actions/navigator/Navigator";
 import {changeState, initData, operateCancel, sendEmail, loadData, operateApproval, addComment, editLoanDetail} from "../../redux/actions/loan/LoanOrderDetail";
@@ -30,6 +32,8 @@ import Util from "../../utils/Util";
 import InputDialog from "../../containers/common/InputDialog";
 import Dialog from "./../common/Dialog";
 import Store from "react-native-simple-store";
+import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 var PreviewModule = NativeModules.PreviewModule;
 
@@ -45,19 +49,45 @@ class LoanOrderDetail extends Component {
     onBack(component) {
         //物理返回键关闭弹窗
         component.props.changeState({
-            //showRejectDialog: false,
-            //showCommentDialog: false,
-            //showEmailDialog: false,
+            showRejectDialog: false,
+            showCommentDialog: false,
+            showEmailDialog: false,
         })
         component.props.back();
     }
 
     componentWillMount() {
         this.props.initData();
+        //监听键盘弹出事件
+        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShowHandler.bind(this));
+        //监听键盘隐藏事件
+        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHideHandler.bind(this));
+    }
+
+    //键盘弹出事件响应
+    keyboardDidShowHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: ScreenUtil.scaleSize(150),
+            }
+        ).start();
+    }
+
+    //键盘隐藏事件响应
+    keyboardDidHideHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: (deviceHeight - ScreenUtil.scaleSize(502)) / 2,
+            }
+        ).start();
     }
 
     componentDidMount() {
-/*        const that = this;
+        const that = this;
         Store.get('token').then((tokenStr) => {
             if (tokenStr) {
                 that.props.changeState({
@@ -72,9 +102,8 @@ class LoanOrderDetail extends Component {
                     currentUserId: user.userNo,
                 })
             }
-        })*/
-/*        this.props.loadData(this.props.navigation.state.params.formId)*/
-        this.props.loadData("1001");
+        })
+        this.props.loadData(this.props.navigation.state.params.formId);
     }
 
     /**
@@ -227,22 +256,29 @@ class LoanOrderDetail extends Component {
                                height: ScreenUtil.scaleSize(40),
                                resizeMode: 'stretch',
                            }}/>
-                    <Text style={[styles.text, {marginLeft: ScreenUtil.scaleSize(30)}]}>{item.userName}</Text>
+                    <Text style={[styles.text, {
+                        marginLeft: ScreenUtil.scaleSize(30),
+                        width: ScreenUtil.scaleSize(120),
+                    }]} numberOfLines={1}>{item.userName}</Text>
                     <Text style={{
                         color: color,
                         fontSize: ScreenUtil.setSpText(9),
-                        marginLeft: ScreenUtil.scaleSize(30),
+                        //marginLeft: ScreenUtil.scaleSize(30),
                         flex: 1,
                     }}>{operate}</Text>
                     {
-                        (1 < 2) ? (
+                        (item.userId == this.props.state.currentUserId &&
+                        this.props.state.createUserId != this.props.state.currentUserId &&
+                        item.operate == '3' && Util.checkIsEmptyString(item.operateComment) &&
+                        (item.bizCommentExtList == null || item.bizCommentExtList.length == 0) &&
+                        this.props.navigation.state.params.source != 'approved') ? (
                             <TouchableOpacity onPress={() => {
                                 this.openCommentDialog(item)
                             }}>
                                 <Text style={{
                                     color: 'orange',
                                     fontSize: ScreenUtil.setSpText(9),
-                                }}>评论</Text>
+                                }}>{Message.COMMENT}</Text>
                             </TouchableOpacity>
                         ) : (
                             <Text style={{
@@ -305,24 +341,27 @@ class LoanOrderDetail extends Component {
                         renderItem={({item, index}) => (
                             <View style={{
                                 marginTop: ScreenUtil.scaleSize(index == 0 ? 20 : 10),
-                                //marginBottom: ScreenUtil.scaleSize(index + 1 == commentList.length ? 40 : 0),
+                                marginBottom: ScreenUtil.scaleSize(index + 1 == commentList.length ? 40 : 0),
                             }}>
                                 <View style={{flexDirection: 'row'}}>
                                     <Text style={{
-                                        width: ScreenUtil.scaleSize(85),
+                                        width: ScreenUtil.scaleSize(120),
                                         fontSize: ScreenUtil.setSpText(7),
                                         color: '#666666',
                                         marginLeft: ScreenUtil.scaleSize(50),
-                                    }}>{item.userName + ':'}</Text>
+                                    }} numberOfLines={1}>{item.userName + ':'}</Text>
                                     <Text style={{
                                         flex: 1,
-                                        width: ScreenUtil.scaleSize(272),
+                                        width: ScreenUtil.scaleSize(237),
                                         fontSize: ScreenUtil.setSpText(7),
                                         color: '#666666',
                                         marginRight: ScreenUtil.scaleSize(40),
                                     }}>{item.comment}</Text>
                                     {
-                                        (1 < 2) ? (
+                                        (index + 1 == commentList.length &&
+                                        operate == '3' &&
+                                        this.props.state.applyStatus == '3' &&
+                                        item.toUserId == this.props.state.currentUserId) ? (
                                             this.renderCommentButton(item)
                                         ) : (
                                             <Text style={{
@@ -347,22 +386,23 @@ class LoanOrderDetail extends Component {
                             <View style={{
                                 flexDirection: 'row',
                                 marginBottom: ScreenUtil.scaleSize(40),
+                                marginTop: ScreenUtil.scaleSize(commentList ? -30 : 20),
                             }}>
                                 <Text style={{
-                                    width: ScreenUtil.scaleSize(85),
+                                    width: ScreenUtil.scaleSize(120),
                                     fontSize: ScreenUtil.setSpText(7),
                                     color: '#666666',
                                     marginLeft: ScreenUtil.scaleSize(50),
-                                }}>{operateUserName + ':'}</Text>
+                                }} numberOfLines={1}>{operateUserName + ':'}</Text>
                                 <Text style={{
                                     flex: 1,
-                                    width: ScreenUtil.scaleSize(272),
+                                    width: ScreenUtil.scaleSize(237),
                                     fontSize: ScreenUtil.setSpText(7),
                                     color: '#666666',
                                     marginRight: ScreenUtil.scaleSize(40),
                                 }}>{operateComment}</Text>
                                 <Text style={{
-                                    width: ScreenUtil.scaleSize(260),
+                                    width: ScreenUtil.scaleSize(250),
                                     fontSize: ScreenUtil.setSpText(7),
                                     color: '#ABABAB',
                                 }}>{this.renderApplicationDate(operateTime)}</Text>
@@ -384,7 +424,7 @@ class LoanOrderDetail extends Component {
             return (
                 <View style={{
                     height: ScreenUtil.scaleSize(56),
-                    marginLeft: ScreenUtil.scaleSize(109),
+                    marginLeft: ScreenUtil.scaleSize(150),
                     marginTop: ScreenUtil.scaleSize(10),
                     flexDirection: 'row',
                 }}>
@@ -392,7 +432,7 @@ class LoanOrderDetail extends Component {
                         arr.map((img) => {
                             return (
                                 <TouchableOpacity style={{
-                                    marginLeft: ScreenUtil.scaleSize(26),
+                                    marginLeft: ScreenUtil.scaleSize(20),
                                 }} onPress={() => {
                                     this.previewDocument({
                                         fileAddress: img.fileDir,
@@ -418,7 +458,7 @@ class LoanOrderDetail extends Component {
      * 渲染评论或回复按钮
      */
     renderCommentButton(item) {
-        if (1 < 2) {
+        if (this.props.state.currentUserId == this.props.state.createUserId) {
             return (
                 <TouchableOpacity onPress={() => {
                     this.gotoReplyPage(item)
@@ -427,7 +467,7 @@ class LoanOrderDetail extends Component {
                         width: ScreenUtil.scaleSize(250),
                         fontSize: ScreenUtil.setSpText(7),
                         color: '#FFAA00',
-                    }}>回复</Text>
+                    }}>{Message.REPLY}</Text>
                 </TouchableOpacity>
             )
         } else {
@@ -439,7 +479,7 @@ class LoanOrderDetail extends Component {
                         width: ScreenUtil.scaleSize(250),
                         fontSize: ScreenUtil.setSpText(7),
                         color: '#FFAA00',
-                    }}>评论</Text>
+                    }}>{Message.COMMENT}</Text>
                 </TouchableOpacity>
             )
         }
@@ -451,12 +491,13 @@ class LoanOrderDetail extends Component {
             currentCommentItem: item,
         })
         this.props.navigateReimbursementReply({
-            expenseNo: this.props.state.expenseNo,
+            expenseNo: this.props.state.applyNo,
             taskId: item.taskId,
-            toUserId: (1 < 2) ? item.userId : this.props.state.createUserId,
+            toUserId: (this.props.state.currentUserId == this.props.state.createUserId) ? item.userId : this.props.state.createUserId,
             procinstId: item.procinstId,
             pid: item.pid ? item.id : 'root',
             taskKey: item.taskKey,
+            templateNo: this.props.state.templateNo,
         })
     }
 
@@ -470,7 +511,7 @@ class LoanOrderDetail extends Component {
             return (
                 <TouchableOpacity style={{
                     height: ScreenUtil.scaleSize(66),
-                    marginLeft: ScreenUtil.scaleSize(135),
+                    marginLeft: ScreenUtil.scaleSize(170),
                     marginTop: ScreenUtil.scaleSize(10),
                     flexDirection: 'row',
                 }} onPress={() => {
@@ -571,6 +612,7 @@ class LoanOrderDetail extends Component {
                     PreviewModule.previewDocument(API.PRINT, component.props.state.token, JSON.stringify({
                         expenseNo: component.props.state.applyNo,
                         procinstId: component.props.state.procinstId,
+                        templateNo: component.props.state.templateNo,
                     }), '',timestamp + '.pdf', (value)=> {
                         component.props.changeState({isLoading: false});
                     })
@@ -609,7 +651,7 @@ class LoanOrderDetail extends Component {
                                    resizeMode: 'stretch',
                                }}/>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={this.openAgreeCheckDialog.bind(this)}>
+                    <TouchableOpacity onPress={this.operateAgree.bind(this)}>
                         <Image source={require('../../img/reimbursement/agree.png')}
                                style={{
                                    height: ScreenUtil.scaleSize(74),
@@ -657,35 +699,22 @@ class LoanOrderDetail extends Component {
      */
     operateReject(component) {
         component.props.operateApproval({
-/*            state: '2',
-            expenseNo: component.props.state.expenseNo,
+            state: '2',
+            billNo: component.props.state.applyNo,
             procinstId: component.props.state.procinstId,
             taskId: component.props.navigation.state.params.taskId,
             taskDefKey: component.props.navigation.state.params.taskDefKey,
             operateComment: component.props.state.operateComment,
-            uuidList: component.props.state.invoiceUUIDList,*/
         })
         //清空驳回原因内容
         this.props.changeState({operateComment: ''});
-    }
-
-    /**
-     * 关闭取消对话框
-     */
-    _closeAgreeModal() {
-        this.props.changeState({
-            showAgreeDialog: false,
-        });
     }
 
     //取消撤回
     _cancelClick() {
          this.props.changeState({
              cancelModalVisible: false,
-             showAgreeDialog: false,
          })
-        // this.props.back();
-        //this.props.navigateApplicationList();
     }
 
     /**
@@ -693,31 +722,32 @@ class LoanOrderDetail extends Component {
      */
     operateAgree() {
         this.props.operateApproval({
-/*            state: '4',
-            expenseNo: this.props.state.expenseNo,
+            state: '4',
+            billNo: this.props.state.applyNo,
             taskId: this.props.navigation.state.params.taskId,
             taskDefKey: this.props.navigation.state.params.taskDefKey,
             procinstId: this.props.state.procinstId,
-            uuidList: this.props.state.invoiceUUIDList,*/
         })
-    }
-
-    //选择借款单编辑器
-    selectEdit(){
-/*        if(this.props.state.applyStatus ==1 || this.props.state.applyStatus ==2){
-            return this.edit;
-        }else{
-            return this.edit0;
-        }*/
-         //Util.showToast("您选择了编辑借款单111");
-        return this.edit;
     }
 
     /**
      * 编辑
      */
     edit(component) {
-        component.props.editLoanDetail()
+        const data = component.props.state;
+        const requestData = {
+            source: 'LoanOrderDetail',
+            departmentId: data.departmentId,
+            departmentName: data.departmentName,
+            LoanReason: data.loanReason ? data.loanReason : '',
+            loanAmount: data.applyAmount,
+            remarks: data.remark ? data.remark : '',
+            copyPersonList: data.ccUid ? [{userNo: data.ccUid, userName: data.ccName}] : [],
+            attachmentList: data.attachmentList,
+            borrowNo: data.applyNo,
+            applyStatus: data.applyStatus,
+        };
+        component.props.editLoanDetail(JSON.parse(JSON.stringify(requestData)))
     }
 
     /**
@@ -739,14 +769,22 @@ class LoanOrderDetail extends Component {
     }
 
     /**
+     * 关闭同意对话框
+     */
+    _closeAgreeModal() {
+        this.props.changeState({
+            showAgreeDialog: false,
+        });
+    }
+
+    /**
      * 撤销
      */
     operateCancel(component) {
         component.props.operateCancel({
             state: '1',
-            expenseNo: component.props.state.expenseNo,
+            billNo: component.props.state.applyNo,
             procinstId: component.props.state.procinstId,
-            uuidList: component.props.state.invoiceUUIDList,
         })
     }
 
@@ -763,6 +801,7 @@ class LoanOrderDetail extends Component {
                 expenseNo: this.props.state.applyNo,
                 email: this.props.state.email,
                 procinstId: this.props.state.procinstId,
+                templateNo: this.props.state.templateNo,
             })
         } else {
             Util.showToast(Message.EMAIL_ERROR);
@@ -774,12 +813,12 @@ class LoanOrderDetail extends Component {
      */
     renderIcon() {
         let iconImage = '';
-        switch (this.props.navigation.state.params.applyStatus) {
+        switch (this.props.state.applyStatus) {
             case '1':
                 iconImage = require('../../img/reimbursement/cancel.png');
                 break;
             case '2':
-                iconImage = require('../../img/reimbursement/reject.png');
+                iconImage = require('../../img/reimbursement/rejection.png');
                 break;
             case '4':
                 iconImage = require('../../img/reimbursement/pass.png');
@@ -817,15 +856,15 @@ class LoanOrderDetail extends Component {
             Util.showToast(Message.REIMBURSEMENT_EMPTY_COMMENT_CONTENT);
         } else {
             component.props.addComment({
-/*                commentContent: {
-                        expenseNo: component.props.state.expenseNo,
+                commentContent: {
+                        billNo: component.props.state.applyNo,
                         taskId: item.taskId,
                         toUserId: (component.props.state.currentUserId == component.props.state.createUserId) ? item.userId : component.props.state.createUserId,
                         procinstId: item.procinstId,
                         pid: item.pid ? item.id : 'root',
                         taskKey: item.taskKey,
                         comment: this.props.state.commentContent,
-                }*/
+                }
             })
             this.props.changeState({showCommentDialog: false});
         }
@@ -835,40 +874,27 @@ class LoanOrderDetail extends Component {
         let rightMessage = null;
         let rightColor = null;
         let rightClick = null;
-        if (this.props.navigation.state.params.applyStatus == 4) {
+        if (this.props.state.applyStatus == 4) {
             rightMessage = Message.PRINT;
             rightColor = '#FFAA00';
             rightClick = this.openEmailDialog;
         }
         if (this.props.state.currentUserId == this.props.state.createUserId) {
-            if (Util.contains(['0', '1', '2'], this.props.navigation.state.params.applyStatus)) {
+            if (Util.contains(['0', '1', '2'], this.props.state.applyStatus)) {
                 rightMessage = Message.EDIT;
                 rightColor = '#ABABAB';
-                rightClick = this.selectEdit();
+                rightClick = this.edit;
             }
-/*            if (this.props.navigation.state.params.applyStatus == 3){
+            if (this.props.state.applyStatus == 3){
                 rightMessage = Message.OPERATE_CANCEL;
                 rightColor = '#ABABAB';
                 rightClick = this.openCancelDialog;
-            }*/
+            }
         }
 
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
-                <Dialog
-                    content={Message.LOAN_ORDER_DETAIL_AGREE_CONFIRM}
-                    type={'confirm'}
-                    leftBtnText={Message.CANCEL}
-                    rightBtnText={Message.CONFIRM}
-                    modalVisible={this.props.state.showAgreeDialog}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    onClose={this._closeAgreeModal.bind(this)}
-                    leftBtnClick={this._cancelClick.bind(this)}
-                    rightBtnClick={this.operateAgree.bind(this)}
-                    thisComponent={this}
-                />
                 <InputDialog isShow={this.props.state.showRejectDialog}
                              backgroundClick={this.closeRejectDialog.bind(this)}
                              titleText={Message.LOAN_ORDER_DETAIL_REJECT_REASON}
@@ -893,7 +919,7 @@ class LoanOrderDetail extends Component {
                              onFocus={this.inputOnFocus}
                              onBlur={this.inputOnBlur}/>
                 <InputDialog isShow={this.props.state.showCommentDialog}
-                             titleText="评论"
+                             titleText={Message.COMMENT}
                              inputHeight={238}
                              inputWidth={530}
                              thisComponent={this}
@@ -938,6 +964,9 @@ class LoanOrderDetail extends Component {
                              rightClick={this.sendEmail.bind(this)}
                              width={590}
                              textAlignVertical={'center'}
+                             top={this.props.state.dialogTop}
+                             onFocus={this.inputOnFocus}
+                             onBlur={this.inputOnBlur}
                              height={332}/>
                 <Dialog
                     content={Message.CANCEL_LOAN}
@@ -950,6 +979,19 @@ class LoanOrderDetail extends Component {
                     onClose={this._closeCancelModal.bind(this)}
                     leftBtnClick={this._cancelClick.bind(this)}
                     rightBtnClick={this.operateCancel.bind(this)}
+                    thisComponent={this}
+                />
+                <Dialog
+                    content={Message.LOAN_ORDER_DETAIL_AGREE_CONFIRM}
+                    type={'confirm'}
+                    leftBtnText={Message.CANCEL}
+                    rightBtnText={Message.CONFIRM}
+                    modalVisible={this.props.state.showAgreeDialog}
+                    leftBtnStyle={{color: '#A5A5A5',}}
+                    rightBtnStyle={{color: '#FFAA00',}}
+                    onClose={this._closeAgreeModal.bind(this)}
+                    leftBtnClick={this._closeAgreeModal.bind(this)}
+                    rightBtnClick={this.operateAgree.bind(this)}
                     thisComponent={this}
                 />
                 <Header
@@ -979,13 +1021,9 @@ class LoanOrderDetail extends Component {
                             }}>{this.props.state.applyPeople}</Text>
                         </View>
                         <View style={styles.row}>
-                            <Text style={styles.label}>{this.getStatus(this.props.navigation.state.params.applyStatus)}</Text>
+                            <Text style={styles.label}>{this.getStatus(this.props.state.applyStatus)}</Text>
                         </View>
-                        <View style={{
-                            backgroundColor: '#DEDEDE',
-                            height: ScreenUtil.scaleSize(2),
-                            marginTop: ScreenUtil.scaleSize(20),
-                        }}/>
+                        <View style={[CustomStyles.separatorLine, {marginTop: ScreenUtil.scaleSize(20)}]}/>
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.LOAN_DETAIL_ORDER_ID}</Text>
                             <Text style={styles.text}>{this.props.state.applyNo}</Text>
@@ -1012,52 +1050,55 @@ class LoanOrderDetail extends Component {
                                 fontWeight: 'bold',
                             }}>{Message.LOAN_DETAIL_DETAIL}</Text>
                         </View>
-                        <View style={styles.row}>
+                        <View style={[styles.row, {marginTop: ScreenUtil.scaleSize(30)}]}>
                             <Text style={styles.label}>{Message.LOAN_DETAIL_DEPARTMENT}</Text>
-                            <Text style={styles.text}>{this.props.state.department}</Text>
+                            <Text style={styles.text}>{this.props.state.departmentName}</Text>
                         </View>
                         <View style={{
                             flexDirection: 'row',
-                            marginTop: ScreenUtil.scaleSize(25),
+                            marginTop: ScreenUtil.scaleSize(20)
                         }}>
-                            <Text style={styles.label}>{Message.LOAN_DETAIL_REASON}</Text>
                             <View style={{
-                                width: ScreenUtil.scaleSize(450),
+                                height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
                             }}>
-                                <TextInput
-                                    editable={false}
-                                    multiline={true}
-                                    autoGrow={true}
-                                    minHeight={ScreenUtil.scaleSize(40)}
-                                    maxHeight={ScreenUtil.scaleSize(700)}
-                                    value={this.props.state.loanReason}
-                                    placeholderTextColor="#ABABAB"
-                                    underlineColorAndroid="transparent"
-                                    style={{
-                                        textAlign: 'left',
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: '#666666',
-                                        textAlignVertical: 'center',
-                                        paddingTop: 0,
-                                        paddingBottom: 0,
-                                        paddingLeft: 0,
-                                    }} />
+                                <Text style={styles.label}>{Message.LOAN_DETAIL_REASON}</Text>
                             </View>
+                            <Text style={{
+                                fontSize: ScreenUtil.setSpText(9),
+                                color: '#666666',
+                                lineHeight: ScreenUtil.scaleSize(40),
+                                width: ScreenUtil.scaleSize(450),
+                            }}>{this.props.state.loanReason}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.LOAN_DETAIL_AMOUNT}</Text>
                             <Text
                                 style={[styles.text, {color: '#FFAA00'}]}>{(this.props.state.applyAmount == ''?'':Message.MONEY + parseFloat(this.props.state.applyAmount).toFixed(2))}</Text>
                         </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.LOAN_DETAIL_REMARK}</Text>
-                            <Text style={styles.text}>{this.props.state.remark}</Text>
+                        <View style={{
+                            flexDirection: 'row',
+                            marginTop: ScreenUtil.scaleSize(20),
+                        }}>
+                            <View style={{
+                                height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
+                            }}>
+                                <Text style={styles.label}>{Message.LOAN_DETAIL_REMARK}</Text>
+                            </View>
+                            <Text style={{
+                                fontSize: ScreenUtil.setSpText(9),
+                                color: '#666666',
+                                lineHeight: ScreenUtil.scaleSize(40),
+                                width: ScreenUtil.scaleSize(450),
+                            }}>{this.props.state.remark}</Text>
                         </View>
                         <View style={{
                             marginTop: ScreenUtil.scaleSize(20),
                             flexDirection: 'row',}}>
                              <View style={{
                                  height: ScreenUtil.scaleSize(40),
+                                 justifyContent: 'center',
                              }}>
                                  <Text style={styles.label}>{Message.LOAN_DETAIL_ATTACHMENT}</Text>
                             </View>
@@ -1090,162 +1131,26 @@ class LoanOrderDetail extends Component {
                                 )}
                             />
                         </View>
+                        <View style={styles.row}>
+                            <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_COPY}</Text>
+                            <Text
+                                style={styles.text}>{this.props.state.ccName}</Text>
+                        </View>
                     </View>
-
-                    {this.props.navigation.state.params.applyStatus !=4 ?
-                        (
-                            <View style={{
-                                paddingHorizontal: ScreenUtil.scaleSize(30),
-                                paddingTop: ScreenUtil.scaleSize(10),
-                                marginTop: ScreenUtil.scaleSize(20),
-                                backgroundColor: '#FFFFFF',
-                            }}>
-                                <View style={{
-                                    height: ScreenUtil.scaleSize(40),}}>
-                                  <Text style={styles.text}>{Message.LOAN_DETAIL_AUDIT}</Text>
-                                </View>
-                                <FlatList
-                                    data={this.props.state.approvalRecordList}
-                                    renderItem={({item, index}) => (
-                                        this.renderApplication(item, index)
-                                    )}
-                                />
-                             </View> ) :  null }
-
-                    {this.props.navigation.state.params.applyStatus ==4 ?
-                        (
-                            <View style={styles.tab}>
-                                <View style={styles.section}>
-                                    <TouchableOpacity
-                                        style={{
-                                            height: ScreenUtil.scaleSize(50),
-                                            width: deviceWidth / 2,
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                        onPress={() => {
-                                            this.props.changeState({
-                                                selected: '0',
-                                            })
-                                        }}>
-                                        <Text style={{
-                                            fontSize: ScreenUtil.setSpText(9),
-                                            color: this.props.state.selected == '0' ? '#FFAA00' : '#666666'}}>
-                                            {Message.LOAN_DETAIL_PAY_BACK_RECORD}
-                                        </Text>
-                                    </TouchableOpacity>
-                                    {
-                                        this.props.state.selected == '0' ? (
-                                            <View style={{
-                                                position: 'absolute',
-                                                bottom: 0,
-                                                left: (deviceWidth / 2 - ScreenUtil.scaleSize(96)) / 2,
-                                                height: ScreenUtil.scaleSize(4),
-                                                width: ScreenUtil.scaleSize(96),
-                                                backgroundColor: '#FFAA00',
-                                            }} />
-                                        ) : null
-                                    }
-                                </View>
-                                <View style={styles.section}>
-                                    <TouchableOpacity
-                                        style={{
-                                            height: ScreenUtil.scaleSize(50),
-                                            width: deviceWidth / 2,
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                        onPress={() => {
-                                            this.props.changeState({
-                                                selected: '1',
-                                            })
-                                        }}>
-                                        <Text style={{
-                                            fontSize: ScreenUtil.setSpText(9),
-                                            color: this.props.state.selected == '1' ? '#FFAA00' : '#666666'
-                                        }}>
-                                            {Message.LOAN_DETAIL_AUDIT_FLOW}
-                                        </Text>
-                                    </TouchableOpacity>
-                                    {
-                                        this.props.state.selected == '1' ? (
-                                            <View style={{
-                                                position: 'absolute',
-                                                bottom: 0,
-                                                right: (deviceWidth / 2 - ScreenUtil.scaleSize(96)) / 2,
-                                                height: ScreenUtil.scaleSize(4),
-                                                width: ScreenUtil.scaleSize(96),
-                                                backgroundColor: '#FFAA00',
-                                            }} />
-                                        ) : null
-                                    }
-                                </View>
-                             </View> ) : null }
-
-                    {this.props.navigation.state.params.applyStatus == 4 ?
-                       (
-                           <View style={{
-                                paddingHorizontal: ScreenUtil.scaleSize(30),
-                                backgroundColor: '#FFFFFF',}}>
-                              <View style={{
-                                  backgroundColor: '#DEDEDE',
-                                  height: ScreenUtil.scaleSize(1),}}/>
-                           </View> ) : null }
-
-                    {this.props.navigation.state.params.applyStatus == 4 ?
-                     (
-                        <View>
-                            {this.props.state.selected == 0 ?
-                                (
-                                    <View style={{
-                                        paddingTop: ScreenUtil.scaleSize(10),
-                                        backgroundColor: '#FFFFFF',}}>
-                                            <FlatList
-                                                data={this.props.state.payBackRecordList}
-                                                renderItem={({item, index}) => (
-                                                    <View style={styles.payBackRowContainer}>
-                                                        <View style={styles.payBackRow}>
-                                                            <Text style={styles.label}>{item.payBackDate}</Text>
-                                                        </View>
-                                                        <View style={styles.payBackRow}>
-                                                            <Text style={{
-                                                                color: '#FFAA00',
-                                                                fontSize: ScreenUtil.setSpText(9),
-                                                                flex:1,
-                                                                textAlign: 'right',
-                                                            }}>{item.payBackAmount}</Text>
-                                                        </View>
-                                                        <View style={styles.payBackRow}>
-                                                            <Text style={{
-                                                                color: '#666666',
-                                                                fontSize: ScreenUtil.setSpText(9),
-                                                            }}>{item.payBackDesc}</Text>
-                                                        </View>
-                                                        <View style={{
-                                                            backgroundColor: '#DEDEDE',
-                                                            height: ScreenUtil.scaleSize(1),
-                                                            marginTop: ScreenUtil.scaleSize(20),
-                                                        }}/>
-                                                    </View>
-                                                )}
-                                            />
-                                            <View style={styles.debtAmountStyle}>
-                                                <Text Text numberOfLines={1}
-                                                      style={[styles.debtAmountText, {maxWidth: 400,}]}>{Message.LOAN_DETAIL_PAY_BACK_REMAIN}</Text>
-                                                <Text
-                                                    style={styles.debtAmountInput}>{this.props.state.debtAmount}</Text>
-                                            </View>
-                                </View>  )  :
+                    {
+                        this.props.state.applyStatus == 0 ? (
+                            null
+                        ) : (
+                            this.props.state.payBackRecordList.length ===  0 ?
                                 (
                                     <View style={{
                                         paddingHorizontal: ScreenUtil.scaleSize(30),
-                                        paddingTop: ScreenUtil.scaleSize(10),
-                                        //marginTop: ScreenUtil.scaleSize(20),
+                                        paddingTop: ScreenUtil.scaleSize(20),
+                                        marginTop: ScreenUtil.scaleSize(20),
                                         backgroundColor: '#FFFFFF',
                                     }}>
                                         <View style={{
-                                            height: ScreenUtil.scaleSize(40),
-                                        }}>
+                                            height: ScreenUtil.scaleSize(40),}}>
                                             <Text style={styles.text}>{Message.LOAN_DETAIL_AUDIT}</Text>
                                         </View>
                                         <FlatList
@@ -1254,11 +1159,165 @@ class LoanOrderDetail extends Component {
                                                 this.renderApplication(item, index)
                                             )}
                                         />
-                                    </View>)}
-                        </View> ) : null }
+                                    </View>
+                                ) :  (
+                                    <View>
+                                        <View style={styles.tab}>
+                                            <View style={styles.section}>
+                                                <TouchableOpacity
+                                                    style={{
+                                                        height: ScreenUtil.scaleSize(72),
+                                                        width: deviceWidth / 2,
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    onPress={() => {
+                                                        this.props.changeState({
+                                                            selected: '0',
+                                                        })
+                                                    }}>
+                                                    <Text style={{
+                                                        fontSize: ScreenUtil.setSpText(9),
+                                                        color: this.props.state.selected == '0' ? '#FFAA00' : '#666666'}}>
+                                                        {Message.LOAN_DETAIL_PAY_BACK_RECORD}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                {
+                                                    this.props.state.selected == '0' ? (
+                                                        <View style={{
+                                                            position: 'absolute',
+                                                            bottom: 0,
+                                                            left: (deviceWidth / 2 - ScreenUtil.scaleSize(96)) / 2,
+                                                            height: ScreenUtil.scaleSize(4),
+                                                            width: ScreenUtil.scaleSize(96),
+                                                            backgroundColor: '#FFAA00',
+                                                        }} />
+                                                    ) : null
+                                                }
+                                            </View>
+                                            <View style={styles.section}>
+                                                <TouchableOpacity
+                                                    style={{
+                                                        height: ScreenUtil.scaleSize(72),
+                                                        width: deviceWidth / 2,
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    onPress={() => {
+                                                        this.props.changeState({
+                                                            selected: '1',
+                                                        })
+                                                    }}>
+                                                    <Text style={{
+                                                        fontSize: ScreenUtil.setSpText(9),
+                                                        color: this.props.state.selected == '1' ? '#FFAA00' : '#666666'
+                                                    }}>
+                                                        {Message.LOAN_DETAIL_AUDIT_FLOW}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                {
+                                                    this.props.state.selected == '1' ? (
+                                                        <View style={{
+                                                            position: 'absolute',
+                                                            bottom: 0,
+                                                            right: (deviceWidth / 2 - ScreenUtil.scaleSize(96)) / 2,
+                                                            height: ScreenUtil.scaleSize(4),
+                                                            width: ScreenUtil.scaleSize(96),
+                                                            backgroundColor: '#FFAA00',
+                                                        }} />
+                                                    ) : null
+                                                }
+                                            </View>
+                                        </View>
+                                        <View style={[CustomStyles.separatorLine, {marginHorizontal: ScreenUtil.scaleSize(30)}]}></View>
+                                        {
+                                            this.props.state.selected == 0 ? (
+                                                <View style={{
+                                                    backgroundColor: '#FFFFFF',}}>
+                                                    <FlatList
+                                                        data={this.props.state.payBackRecordList}
+                                                        renderItem={({item, index}) => (
+                                                            <View style={styles.payBackRowContainer}>
+                                                                <View style={{
+                                                                    flexDirection: 'row',
+                                                                    marginTop: ScreenUtil.scaleSize(20),
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                }}>
+                                                                    <View>
+                                                                        <View style={{
+                                                                            height: ScreenUtil.scaleSize(40),
+                                                                            justifyContent: 'center',
+                                                                        }}>
+                                                                            <Text style={{
+                                                                                color: '#ABABAB',
+                                                                                fontSize: ScreenUtil.setSpText(9),
+                                                                            }}>{item.payBackDate}</Text>
+                                                                        </View>
+                                                                        <View style={{
+                                                                            height: ScreenUtil.scaleSize(40),
+                                                                            justifyContent: 'center',
+                                                                            marginTop: ScreenUtil.scaleSize(20),
+                                                                        }}>
+                                                                            <Text style={{
+                                                                                color: '#666666',
+                                                                                fontSize: ScreenUtil.setSpText(9),
+                                                                            }}>{item.payBackDesc}</Text>
+                                                                        </View>
+                                                                    </View>
+                                                                    <View style={{
+                                                                        height: ScreenUtil.scaleSize(40),
+                                                                        justifyContent: 'center',
+                                                                    }}>
+                                                                        <Text style={{
+                                                                            color: '#FFAA00',
+                                                                            fontSize: ScreenUtil.setSpText(9),
+                                                                        }}>{item.payBackAmount}</Text>
+                                                                    </View>
+                                                                </View>
+                                                                <View style={{
+                                                                    backgroundColor: '#DEDEDE',
+                                                                    height: 1 / PixelRatio.get(),
+                                                                    marginTop: ScreenUtil.scaleSize(20),
+                                                                    marginBottom: 1 / PixelRatio.get(),     //修复部分分割线被吃掉，如遇其他机型有问题，增大其值
+                                                                }}/>
+                                                            </View>
+                                                        )}
+                                                    />
+                                                    <View style={styles.debtAmountStyle}>
+                                                        <Text Text numberOfLines={1}
+                                                              style={styles.debtAmountText}>{Message.LOAN_DETAIL_PAY_BACK_REMAIN}</Text>
+                                                        <Text
+                                                            style={styles.debtAmountInput}>{666.66}</Text>
+                                                    </View>
+                                                </View>
+                                            ) : (
+                                                <View style={{
+                                                    paddingHorizontal: ScreenUtil.scaleSize(30),
+                                                    paddingTop: ScreenUtil.scaleSize(40),
+                                                    backgroundColor: '#FFFFFF',
+                                                }}>
+                                                    <View style={{
+                                                        height: ScreenUtil.scaleSize(40),
+                                                    }}>
+                                                        <Text style={styles.text}>{Message.LOAN_DETAIL_AUDIT}</Text>
+                                                    </View>
+                                                    <FlatList
+                                                        data={this.props.state.approvalRecordList}
+                                                        renderItem={({item, index}) => (
+                                                            this.renderApplication(item, index)
+                                                        )}
+                                                    />
+                                                </View>
+                                            )
+                                        }
+                                    </View>
+                            )
+                        )
+                    }
                 </ScrollView>
                 {this.renderBottom()}
-            </View>
+            </SafeAreaView>
         )
     }
 }
@@ -1289,7 +1348,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(LoanOrderDetail);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F3F3'
+        backgroundColor: 'white'
     },
     sclView: {
         //flex: 1,
@@ -1317,42 +1376,31 @@ const styles = StyleSheet.create({
     },
     payBackRowContainer: {
         paddingHorizontal: ScreenUtil.scaleSize(30),
-        paddingVertical: ScreenUtil.scaleSize(10),
         backgroundColor: '#FFFFFF',
-    },
-    payBackRow:{
-        height: ScreenUtil.scaleSize(24),
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: ScreenUtil.scaleSize(10),
     },
     debtAmountStyle: {
         flexDirection: 'row',
-        //width: ScreenUtil.scaleSize(730),
-        height: ScreenUtil.scaleSize(120),
+        height: ScreenUtil.scaleSize(140),
         alignItems: 'center',
+        paddingHorizontal: ScreenUtil.scaleSize(30),
     },
     debtAmountText:{
         flex: 1,
         color: '#FF8080',
         fontSize: ScreenUtil.setSpText(9),
-        paddingHorizontal: ScreenUtil.scaleSize(30),
     },
     debtAmountInput:{
-        flex: 1,
-        textAlign: 'right',
         color: '#FF8080',
         fontSize: ScreenUtil.setSpText(9),
-        paddingHorizontal: ScreenUtil.scaleSize(30),
     },
     tab: {
         marginTop: ScreenUtil.scaleSize(20),
-        height: ScreenUtil.scaleSize(58),
+        height: ScreenUtil.scaleSize(72),
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
     },
     section: {
-        height: ScreenUtil.scaleSize(58),
+        height: ScreenUtil.scaleSize(72),
         width: deviceWidth / 2,
         justifyContent: 'center',
         alignItems: 'center',

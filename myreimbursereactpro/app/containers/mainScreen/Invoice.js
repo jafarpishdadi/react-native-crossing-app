@@ -6,6 +6,7 @@ import React, {Component} from "react";
 import {connect} from "react-redux";
 import {bindActionCreators} from "redux";
 import {
+    Animated,
     Image,
     ImageBackground,
     StyleSheet,
@@ -17,7 +18,9 @@ import {
     TouchableWithoutFeedback,
     FlatList,
     PixelRatio,
-    ActivityIndicator
+    ActivityIndicator,
+    findNodeHandle,
+    DeviceEventEmitter
 } from "react-native";
 import ScreenUtil, {deviceHeight, deviceWidth} from "../../utils/ScreenUtil";
 import {CustomStyles} from "../../css/CustomStyles";
@@ -55,11 +58,19 @@ import Picker from "react-native-picker";
 import Util from "../../utils/Util";
 import PopDialog from "./../common/PopDialog";
 import Dialog from "./../common/Dialog";
-import Loading from "../common/Loading";
+import {BlurView} from "react-native-blur";
 import BackDialog from "./../common/BackDialog";
 import CommonLoading from "./../common/CommonLoading";
+import {changeState as changeAppState} from './../../redux/actions/App';
 const Permissions = require('react-native-permissions');
 var RNBridgeModule = NativeModules.RNBridgeModule;
+const interpolate = (value, opts) => {
+    const x = value.interpolate(opts);
+    x.toJSON = () => x.__getValue();
+    return x;
+};
+let countZIndex = 500;
+let amountZIndex = 500;
 
 class Invoice extends Component {
 
@@ -71,12 +82,27 @@ class Invoice extends Component {
                 source={focused ? require('../../img/mainScreen/invoice_selected.png') : require('../../img/mainScreen/invoice_unselected.png')}
                 style={CustomStyles.icon}
             />
-        )
+        ),
+        tabBarOnPress: ({route, index}, jumpToIndex) => {
+            if (route.routeName === 'Invoice') {
+                DeviceEventEmitter.emit('InvoiceList');
+                DeviceEventEmitter.emit('setInvoiceTab');
+            }
+            jumpToIndex(index);
+        }
     }
 
     constructor(props) {
         super(props);
         props.loadMore = false;
+        this.state = {
+            scrollY: new Animated.Value(0), //列表滚动距离
+            countZIndex: -500,
+            amountZIndex: -500,
+            countArrowY: new Animated.Value(0),
+            amountArrowY: new Animated.Value(0),
+            dynamicHeight: 0,
+        };
     }
 
     componentDidMount() {
@@ -92,6 +118,30 @@ class Invoice extends Component {
             //加载数据
             this.props.loadInvoiceListDataReimbursement('N');
         }
+        this.hideBlurSubscription = DeviceEventEmitter.addListener('hideBlurTabTwo', ()=>this.blurAction('0'));
+        this.showBlurSubscription = DeviceEventEmitter.addListener('showBlurTabTwo', ()=>this.blurAction('1'));
+        this.invoiceEventListener = DeviceEventEmitter.addListener('InvoiceList', ()=>this.toggleToInvoiceListAction());
+        this.setInvoiceTab = DeviceEventEmitter.addListener('setInvoiceTab', ()=>this.setTab());
+    }
+
+    /**
+     * 组件卸载
+     * 清除定时器，监听器
+     */
+    componentWillUnmount() {
+        this.hideBlurSubscription.remove();
+        this.showBlurSubscription.remove();
+        this.invoiceEventListener.remove();
+        this.setInvoiceTab.remove();
+    }
+
+    setTab() {
+        const that = this;
+        setTimeout(() => {
+            that.props.changeAppState({
+                currentTab: 'Invoice'
+            })
+        }, 100);
     }
 
     /**
@@ -118,6 +168,36 @@ class Invoice extends Component {
      */
     _closeModal(component) {
         component.props.changeState({showDialog: false, deleteConfirm: false});
+    }
+
+    /**
+     * 模糊相关操作
+     */
+    blurAction(type) {
+        if (type == '1') {
+            this.props.changeState({viewRef: findNodeHandle(this.refs.blurView)});
+        } else {
+            this.props.changeState({viewRef: null});
+        }
+    }
+
+    /**
+     * 切换到票夹时，收起阴影框显示等操作
+     */
+    toggleToInvoiceListAction() {
+        const {countArrowY, amountArrowY} = this.state;
+        const that = this;
+        setTimeout(() => {
+            that.props.changeState({
+                invoiceCountZIndex: -500,
+                invoiceAmountZIndex: -500
+            });
+        }, 100);
+
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+        this.refs.countView.setNativeProps({style: {zIndex: -500}});
+        this.refs.amountView.setNativeProps({style: {zIndex: -500}});
     }
 
     /**
@@ -280,14 +360,14 @@ class Invoice extends Component {
 
         for (var k = 0; k < dataWithoutReimbursement.length; k++) {
             if (!(Util.contains(['01', '02', '04', '10', '11'], dataWithoutReimbursement[k].invoiceTypeCode)
-                && dataWithoutReimbursement[k].checkState == 0) && status != 2 && status != 3) {
+                && ((dataWithoutReimbursement[k].totalAmount < 0) || (dataWithoutReimbursement[k].checkState == 0))) && status != 2 && status != 3) {
                 allItemCount += parseInt(dataWithoutReimbursement[k].invoiceCount);
             }
         }
 
         var index = selectedItem.indexOf(invoiceItem.uuid); //获取数组索引
 
-        if (!(Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && invoiceItem.checkState == 0)) {
+        if (!(Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && ((invoiceItem.totalAmount < 0) || (invoiceItem.checkState == 0)))) {
             if (isSelectedAll) {
                 this.props.changeState({isSelectedAll: false, allItemCount: allItemCount});
                 if (selectedItemIDCount == allItemCount) {
@@ -433,6 +513,7 @@ class Invoice extends Component {
      * 确认删除发票
      */
     ensureDeleteClick() {
+        this['openRow'] = null;
         this.props.loadInvoiceDelete(this.props.invoice.preDeleteInvoiceId);
     }
 
@@ -507,7 +588,7 @@ class Invoice extends Component {
 
         for (var k = 0; k < dataWithoutReimbursement.length; k++) {
             if (!(Util.contains(['01', '02', '04', '10', '11'], dataWithoutReimbursement[k].invoiceTypeCode)
-                && dataWithoutReimbursement[k].checkState == 0) && status != 2 && status != 3) {
+                && ((dataWithoutReimbursement[k].totalAmount < 0) || (dataWithoutReimbursement[k].checkState == 0))) && status != 2 && status != 3) {
                 allItemCount += parseInt(dataWithoutReimbursement[k].invoiceCount);
             }
         }
@@ -556,7 +637,7 @@ class Invoice extends Component {
 
         for (var k = 0; k < dataWithoutReimbursement.length; k++) {
             if (!(Util.contains(['01', '02', '04', '10', '11'], dataWithoutReimbursement[k].invoiceTypeCode)
-                && dataWithoutReimbursement[k].checkState == 0) && status != 2 && status != 3) {
+                && ((dataWithoutReimbursement[k].totalAmount < 0) || (dataWithoutReimbursement[k].checkState == 0))) && status != 2 && status != 3) {
                 allItemCount += parseInt(dataWithoutReimbursement[k].invoiceCount);
             }
         }
@@ -754,7 +835,7 @@ class Invoice extends Component {
         status = this.props.invoice.reimbursementStatus;
 
         checkedInvoice = this.props.invoice.checkedInvoice;
-        if (!(Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && invoiceItem.checkState == 0) && status != 2 && status != 3) {
+        if (!(Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && ((invoiceItem.totalAmount < 0) || (invoiceItem.checkState == 0))) && status != 2 && status != 3) {
             if (!Util.contains(allItem, invoiceItem.uuid)) {
                 allItem.push(invoiceItem.uuid);
                 allItemAmount.push(parseFloat(invoiceItem.totalAmount));
@@ -768,7 +849,7 @@ class Invoice extends Component {
         selectedItem = this.props.invoice.selectedItem;
         index = selectedItem.indexOf(invoiceItem.uuid);
 
-        if (Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && invoiceItem.checkState == 0 && status != 2 && status != 3) {
+        if (Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && ((invoiceItem.totalAmount < 0) || (invoiceItem.checkState == 0)) && status != 2 && status != 3) {
             selectedIcon = require('./../../img/invoice/disabled_hooked.png');
         } else {
             if (index == (-1) && selectedItem.indexOf('-' + invoiceItem.uuid) == (-1)) {
@@ -782,13 +863,26 @@ class Invoice extends Component {
 
         return (
             this.props.invoice.showCheckbox == false ?
-                <View>
+                <View style={{backgroundColor: 'white'}}>
                     <SwipeRow
                         key={ref}
                         leftOpenValue={75}
-                        rightOpenValue={-75}
+                        rightOpenValue={-ScreenUtil.scaleSize(110)}
                         disableLeftSwipe={this.props.invoice.canDelete}
                         disableRightSwipe={true}
+                        closeOnRowPress={true}
+                        onRowOpen={
+                            ()=> {
+                                this.commonClosedShadowbox();
+                                if (!this['openRow']) {
+                                    this['openRow'] = ref;
+                                }
+                                if (this['openRow'] != ref) {
+                                    this[this['openRow']].closeRow();
+                                    this['openRow'] = ref;
+                                }
+                            }
+                        }
                         ref={(swipeRow) => {
                             this[ref] = swipeRow;
                             if (swipeRow) {
@@ -802,98 +896,118 @@ class Invoice extends Component {
                     >
                         <View style={styles.standaloneRowBack}>
                             <Text style={styles.backTextWhite}>Left</Text>
-                            <TouchableOpacity onPress={() => {
-                                this.props.changeState({
-                                    deleteConfirm: true,
-                                    preDeleteInvoiceId: invoiceItem.uuid
-                                });
-                            }}>
-                                <Image source={require('./../../img/invoice/ic_delete.png')}
-                                       style={[styles.invoiceRowBtnIcon]}/>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    this.props.changeState({
+                                        deleteConfirm: true,
+                                        preDeleteInvoiceId: invoiceItem.uuid
+                                    });
+                                }}>
+                                <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                                    <Image source={require('./../../img/invoice/delete.png')}
+                                           style={[styles.invoiceRowBtnIcon]}/>
+                                </View>
                             </TouchableOpacity>
                         </View>
                         <TouchableWithoutFeedback
                             onPress={() => {
+                                this.commonClosedShadowbox();
+                                this.props.changeState({
+                                    invoiceCountZIndex: -500,
+                                    invoiceAmountZIndex: -500
+                                });
+
+                                Picker.hide();
+
                                 this.props.navigateInvoiceDetails({
                                     invoiceTypeCode: invoiceItem.invoiceTypeCode,
                                     uuid: invoiceItem.uuid
-                                })
-                                Picker.hide();
+                                });
                             }}>
-                            <View style={{backgroundColor: '#FFFFFF'}}>
-                                <View style={styles.standaloneRowFront}>
-                                    {this.uncheckedStatus(invoiceItem)}
-                                    <View style={styles.invoiceItemHeader}>
-                                        <Image source={invoiceIcon}
-                                               style={styles.invoiceIcon}/>
-                                        <Text Text numberOfLines={1}
-                                              style={[styles.invoiceItemTypeText]}>{invoiceType}</Text>
-                                        <Text
-                                            style={styles.invoiceItemAmount}>{Message.MONEY + this.handleAmount(invoiceItem.totalAmount)}</Text>
-                                    </View>
-                                    <View style={styles.invoiceItemDetail}>
-                                        <Text
-                                            style={styles.invoiceItemCreateDate}>{Message.INVOICE_LIST_CREATE_DATE + ':'}</Text>
-                                        <Text
-                                            style={[styles.invoiceItemCreateDate, {marginLeft: ScreenUtil.scaleSize(60)}]}>{this.handleDateFormat(invoiceItem.invoiceDate)}</Text>
-                                    </View>
+                            <View style={styles.standaloneRowFront}>
+                                {this.uncheckedStatus(invoiceItem)}
+                                <View style={styles.invoiceItemHeader}>
+                                    <Image source={invoiceIcon}
+                                           style={styles.invoiceIcon}/>
+                                    <Text numberOfLines={1} ellipsizeMode='tail'
+                                          style={[styles.invoiceItemTypeText]}>{invoiceType}</Text>
+                                    <Text
+                                        style={styles.invoiceItemAmount}>{Message.MONEY + this.handleAmount(invoiceItem.totalAmount)}</Text>
+                                </View>
+                                <View style={styles.invoiceItemDetail}>
+                                    <Text
+                                        style={styles.invoiceItemCreateDate}>{Message.INVOICE_LIST_CREATE_DATE + ':'}</Text>
+                                    <Text
+                                        style={[styles.invoiceItemCreateDate, {marginLeft: ScreenUtil.scaleSize(60)}]}>{this.handleDateFormat(invoiceItem.invoiceDate)}</Text>
                                 </View>
                             </View>
                         </TouchableWithoutFeedback>
                     </SwipeRow>
-                    <View style={{
-                        marginHorizontal: ScreenUtil.scaleSize(30),
-                        height: 1 / PixelRatio.get(),
-                        backgroundColor: '#DEDEDE'
-                    }}/>
+                    <View
+                        style={{
+                            width: deviceWidth - 2 * ScreenUtil.scaleSize(30),
+                            height: 1 / PixelRatio.get(),
+                            backgroundColor: '#DEDEDE',
+                            justifyContent: 'center',
+                            alignSelf: 'center',
+                            marginHorizontal: ScreenUtil.scaleSize(30)
+                        }}/>
                 </View>
                 :
-                <View>
-                    <View style={{flexDirection: 'row', flex: 1}}>
-                        <TouchableWithoutFeedback
-                            disabled={Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && invoiceItem.checkState == '0'}
-                            onPress={() => {
-                                this.toggleSelected(invoiceItem, invoiceItem.totalAmount);
-                            }}>
-                            <View style={[styles.checkboxView, {padding: 0, margin: 0}]}>
-                                <Image
-                                    style={styles.checkboxIcon}
-                                    source={selectedIcon}/>
+                <View style={{flexDirection: 'row', width: deviceWidth, height: ScreenUtil.scaleSize(123)}}>
+                    <TouchableWithoutFeedback
+                        disabled={Util.contains(['01', '02', '04', '10', '11'], invoiceItem.invoiceTypeCode) && ((invoiceItem.totalAmount < 0) || (invoiceItem.checkState == 0))}
+                        onPress={() => {
+                            this.toggleSelected(invoiceItem, invoiceItem.totalAmount);
+                        }}>
+                        <View style={[styles.checkboxView, {padding: 0, margin: 0}]}>
+                            <Image
+                                style={styles.checkboxIcon}
+                                source={selectedIcon}/>
+                        </View>
+                    </TouchableWithoutFeedback>
+                    <TouchableWithoutFeedback
+                        onPress={() => {
+
+                            this.commonClosedShadowbox();
+                            this.props.changeState({
+                                invoiceCountZIndex: -500,
+                                invoiceAmountZIndex: -500
+                            });
+
+                            Picker.hide();
+
+                            this.props.navigateInvoiceDetails({
+                                invoiceTypeCode: invoiceItem.invoiceTypeCode,
+                                uuid: invoiceItem.uuid,
+                            })
+                        }}>
+                        <View style={styles.standaloneRowFrontView}>
+                            {this.uncheckedStatus(invoiceItem)}
+                            <View style={styles.invoiceItemHeaderView}>
+                                <Image source={invoiceIcon}
+                                       style={styles.invoiceIcon}/>
+                                <Text style={styles.invoiceItemTypeText} numberOfLines={1}
+                                      ellipsizeMode='tail'>{invoiceType}</Text>
+                                <Text
+                                    style={[styles.invoiceItemAmountText]}>{Message.MONEY + invoiceItem.totalAmount}</Text>
                             </View>
-                        </TouchableWithoutFeedback>
-                        <TouchableWithoutFeedback
-                            onPress={() => {
-                                this.props.navigateInvoiceDetails({
-                                    invoiceTypeCode: invoiceItem.invoiceTypeCode,
-                                    uuid: invoiceItem.uuid,
-                                })
-                                Picker.hide();
-                            }}>
-                            <View style={{padding: 0, margin: 0}}>
-                                <View style={styles.standaloneRowFrontView}>
-                                    {this.uncheckedStatus(invoiceItem)}
-                                    <View style={styles.invoiceItemHeaderView}>
-                                        <Image source={invoiceIcon}
-                                               style={styles.invoiceIcon}/>
-                                        <Text style={styles.invoiceItemTypeText}>{invoiceType}</Text>
-                                        <Text
-                                            style={[styles.invoiceItemAmountText]}>{Message.MONEY + invoiceItem.totalAmount}</Text>
-                                    </View>
-                                    <View style={styles.invoiceItemDetailView}>
-                                        <Text
-                                            style={styles.invoiceItemCreateDate}>{Message.INVOICE_LIST_CREATE_DATE + ':'}</Text>
-                                        <Text
-                                            style={[styles.invoiceItemCreateDate, {marginLeft: ScreenUtil.scaleSize(60)}]}>{this.handleDateFormat(invoiceItem.invoiceDate)}</Text>
-                                    </View>
-                                </View>
+                            <View style={styles.invoiceItemDetailView}>
+                                <Text
+                                    style={styles.invoiceItemCreateDate}>{Message.INVOICE_LIST_CREATE_DATE + ':'}</Text>
+                                <Text
+                                    style={[styles.invoiceItemCreateDate, {marginLeft: ScreenUtil.scaleSize(60)}]}>{this.handleDateFormat(invoiceItem.invoiceDate)}</Text>
                             </View>
-                        </TouchableWithoutFeedback>
-                    </View>
-                    <View style={{
-                        marginHorizontal: ScreenUtil.scaleSize(30),
-                        height: 1 / PixelRatio.get(),
-                        backgroundColor: '#DEDEDE'
-                    }}/>
+                            <View style={{
+                                position: 'absolute',
+                                right: ScreenUtil.scaleSize(30), top: ScreenUtil.scaleSize(122),
+                                left: ScreenUtil.scaleSize(30),
+                                width: 0.84 * deviceWidth - 2 * ScreenUtil.scaleSize(30),
+                                height: 1 / PixelRatio.get(),
+                                backgroundColor: '#DEDEDE'
+                            }}></View>
+                        </View>
+                    </TouchableWithoutFeedback>
                 </View>
 
         )
@@ -909,7 +1023,7 @@ class Invoice extends Component {
             for (var j = 0; j < this.props.invoice.dataWithoutReimbursement.length; j++) {
                 if (this.props.invoice.selectedItem[i] == this.props.invoice.dataWithoutReimbursement[j].uuid) {
                     var targetInvoiceItem = {};
-                    var invoiceItem = this.props.invoice.dataWithoutReimbursement[j]
+                    var invoiceItem = this.props.invoice.dataWithoutReimbursement[j];
                     targetInvoiceItem.invoiceType = invoiceItem.invoiceTypeCode;
                     targetInvoiceItem.invoiceNum = invoiceItem.invoiceCount;
                     targetInvoiceItem.invoiceDetail = invoiceItem.goodsName;
@@ -919,6 +1033,7 @@ class Invoice extends Component {
                     targetInvoiceItem.imageAddress = '';
                     targetInvoiceItem.checkStatusCode = invoiceItem.checkState;
                     targetInvoiceItem.invoiceTypeName = Util.getInvoiceTypeName(invoiceItem.invoiceTypeCode);
+                    targetInvoiceItem.invoiceTaxamount = invoiceItem.taxAmount;
                     selectInvoiceList.push(targetInvoiceItem);
                     break;
                 }
@@ -928,25 +1043,42 @@ class Invoice extends Component {
     }
 
 
+    /**
+     * 票夹底部报销按钮执行
+     * @constructor
+     */
     ButtonAction() {
         var status = this.props.invoice.reimbursementStatus;
+        const {countArrowY, amountArrowY, scrollY} = this.state;
         switch (status) {
             case 0:
                 if (this.props.invoice.selectedDateStr == '') {
                     this.props.changeState({
                         showCheckbox: true,
-                        showCountDetail: false,      //显示累计张数详情
-                        showAmountDetail: false,     //显示累计金额详情
+                        invoiceCountZIndex: -500,
+                        invoiceAmountZIndex: -500
                     });
+                    countArrowY.setValue(0);
+                    amountArrowY.setValue(0);
+                    scrollY.setValue(0);
+                    this.refs.statusLabelView.setNativeProps({style: {zIndex: -30}});
+                    this.refs.countView.setNativeProps({style: {zIndex: -500}});
+                    this.refs.amountView.setNativeProps({style: {zIndex: -500}});
                 } else {
                     this.props.changeState({
                         showCheckbox: true,
                         selectedYear: '',
                         selectedMonth: '',
                         selectedDateStr: '',
-                        showCountDetail: false,      //显示累计张数详情
-                        showAmountDetail: false,     //显示累计金额详情
+                        invoiceCountZIndex: -500,
+                        invoiceAmountZIndex: -500
                     });
+                    countArrowY.setValue(0);
+                    amountArrowY.setValue(0);
+                    scrollY.setValue(0);
+                    this.refs.statusLabelView.setNativeProps({style: {zIndex: -30}});
+                    this.refs.countView.setNativeProps({style: {zIndex: -500}});
+                    this.refs.amountView.setNativeProps({style: {zIndex: -500}});
                     this.props.loadInvoiceListReimbursedData();
                 }
                 break;
@@ -964,6 +1096,10 @@ class Invoice extends Component {
         }
     }
 
+    /**
+     * 渲染票夹底部视图
+     * @returns {XML}
+     */
     renderBottom() {
         var reimbursementStatus = this.props.invoice.reimbursementStatus;
         if (reimbursementStatus === 0) {
@@ -1046,37 +1182,9 @@ class Invoice extends Component {
     }
 
     /**
-     * 显示取消返回按钮
-     * @returns {XML}
+     * 渲染未报销样式
+     * @returns {{fontSize: *, color: string}}
      */
-    showCancelText() {
-        return (
-            <View style={styles.cancelText}>
-                <TouchableOpacity style={{
-                    width: ScreenUtil.scaleSize(80),
-                    height: ScreenUtil.scaleSize(93),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'transparent'
-                }}
-                                  onPress={
-                                      () => {
-                                          if (this.props.invoice.targetExpenseId) {
-                                              this.props.changeState({showCheckbox: false});
-                                              this.props.changeState({targetExpenseId: ''});
-                                              this.props.back();
-                                          } else {
-                                              this.props.changeState({showCheckbox: false});
-                                          }
-                                          this.props.doInitialise();
-                                      }
-                                  }>
-                    <Text style={styles.moreTxt}>{Message.CANCEL}</Text>
-                </TouchableOpacity>
-            </View>
-        )
-    }
-
     renderNotReimbursementLabel() {
         var status = this.props.invoice.reimbursementStatus;
         return (status == 0 ?
@@ -1084,6 +1192,10 @@ class Invoice extends Component {
         {fontSize: ScreenUtil.setSpText(7), color: '#666666'});
     }
 
+    /**
+     * 渲染报销中样式
+     * @returns {{fontSize: *, color: string}}
+     */
     renderInReimbursementLabel() {
         var status = this.props.invoice.reimbursementStatus;
         return (status == 2 ?
@@ -1091,6 +1203,10 @@ class Invoice extends Component {
         {fontSize: ScreenUtil.setSpText(7), color: '#666666'});
     }
 
+    /**
+     * 渲染已报销样式
+     * @returns {{fontSize: *, color: string}}
+     */
     renderDoneReimbursementLabel() {
         var status = this.props.invoice.reimbursementStatus;
         return (status == 3 ?
@@ -1133,16 +1249,18 @@ class Invoice extends Component {
 
     }
 
+    /**
+     * 渲染Flatlist头部视图样式
+     * @returns {*}
+     */
     renderListHeaderStyle() {
         return (
             this.props.invoice.showCheckbox ?
             {
-                // marginTop: ScreenUtil.scaleSize(20),
                 width: 0,
                 height: 0,
                 backgroundColor: '#FFFFFF'
             } : {
-                // marginTop: ScreenUtil.scaleSize(20),
                 width: deviceWidth,
                 height: ScreenUtil.scaleSize(58),
                 backgroundColor: '#FFFFFF'
@@ -1150,575 +1268,492 @@ class Invoice extends Component {
         );
     }
 
-    render() {
+    /**
+     * listHeader点击日期触发事件
+     */
+    listHeaderDatePress() {
+        const {countArrowY, amountArrowY} = this.state;
+        if (Platform.OS === 'android') {
+            RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                countZIndex = -500;
+                amountZIndex = -500;
+                this.refs.countView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.refs.amountView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.refs.countView.getNative
+                this.props.changeState({
+                    showPickerShadow: true,
+                    isShowDatePicker: true,
+                    invoiceCountZIndex: -500,
+                    invoiceAmountZIndex: -500
 
+                });
+                countArrowY.setValue(0);
+                amountArrowY.setValue(0);
+                this.createDatePicker();
+                Picker.show();
+            });
+        } else {
+            countZIndex = -500;
+            amountZIndex = -500;
+            this.refs.countView.setNativeProps({
+                style: {zIndex: -500}
+            });
+            this.refs.amountView.setNativeProps({
+                style: {zIndex: -500}
+            });
+            this.props.changeState({
+                showPickerShadow: true,
+                isShowDatePicker: true,
+                invoiceCountZIndex: -500,
+                invoiceAmountZIndex: -500
+
+            });
+            countArrowY.setValue(0);
+            amountArrowY.setValue(0);
+            this.createDatePicker();
+            Picker.show();
+        }
+    }
+
+    /**
+     * listHeader点击累计张数触发事件
+     */
+    listHeaderCountPress() {
+        let invoiceCountZIndex = this.props.invoice.invoiceCountZIndex;
+        const {countArrowY, amountArrowY} = this.state;
+        if (countZIndex > 0) {
+            if (invoiceCountZIndex > 0) {
+                this.refs.countView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.refs.amountView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.props.changeState({
+                    invoiceCountZIndex: -500,
+                    invoiceAmountZIndex: -500
+                });
+                countArrowY.setValue(0);
+                amountArrowY.setValue(0);
+            } else {
+                this.refs.countView.setNativeProps({
+                    style: {zIndex: 500}
+                });
+                this.refs.amountView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.props.changeState({
+                    invoiceCountZIndex: 500,
+                    invoiceAmountZIndex: -500
+                });
+                countArrowY.setValue(1);
+                amountArrowY.setValue(0);
+            }
+        } else {
+            countZIndex = 500;
+            this.refs.countView.setNativeProps({
+                style: {zIndex: 500}
+            });
+            this.refs.amountView.setNativeProps({
+                style: {zIndex: -500}
+            });
+            this.props.changeState({
+                invoiceCountZIndex: 500,
+                invoiceAmountZIndex: -500
+            });
+            countArrowY.setValue(1);
+            amountArrowY.setValue(0);
+        }
+    }
+
+    /**
+     * listHeader点击累计金额触发事件
+     */
+    listHeaderAmountPress() {
+        let invoiceAmountZIndex = this.props.invoice.invoiceAmountZIndex;
+        const {countArrowY, amountArrowY} = this.state;
+        if (amountZIndex > 0) {
+            if (invoiceAmountZIndex > 0) {
+                this.refs.countView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.refs.amountView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.props.changeState({
+                    invoiceCountZIndex: -500,
+                    invoiceAmountZIndex: -500
+                });
+                countArrowY.setValue(0);
+                amountArrowY.setValue(0);
+            } else {
+                this.refs.countView.setNativeProps({
+                    style: {zIndex: -500}
+                });
+                this.refs.amountView.setNativeProps({
+                    style: {zIndex: 500}
+                });
+                this.props.changeState({
+                    invoiceCountZIndex: -500,
+                    invoiceAmountZIndex: 500
+                });
+                countArrowY.setValue(0);
+                amountArrowY.setValue(1);
+            }
+        } else {
+            amountZIndex = 500;
+            this.refs.countView.setNativeProps({
+                style: {zIndex: -500}
+            });
+            this.refs.amountView.setNativeProps({
+                style: {zIndex: 500}
+            });
+            this.props.changeState({
+                invoiceCountZIndex: -500,
+                invoiceAmountZIndex: 500
+            });
+            countArrowY.setValue(0);
+            amountArrowY.setValue(1);
+        }
+    }
+
+    /**
+     * listHeader点击未报销触发事件
+     */
+    listHeaderNoReimbursementStatusPress() {
+        const {countArrowY, amountArrowY} = this.state;
+        this.props.changeState({
+            reimbursementStatus: 0,
+            canDelete: false,
+            reimbursementSelected: 0,
+            showCountDetail: false,
+            showAmountDetail: false,
+            invoiceCountZIndex: -500,
+            invoiceAmountZIndex: -500
+        });
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+        this.refs.countView.setNativeProps({style: {zIndex: -500}});
+        this.refs.amountView.setNativeProps({style: {zIndex: -500}});
+    }
+
+    /**
+     * listHeader点击报销中触发事件
+     */
+    listHeaderInReimbursementStatusPress() {
+        const {countArrowY, amountArrowY} = this.state;
+        this.props.changeState({
+            reimbursementStatus: 2,
+            canDelete: true,
+            showCheckbox: false,
+            reimbursementSelected: 2,
+            showCountDetail: false,
+            showAmountDetail: false,
+            invoiceCountZIndex: -500,
+            invoiceAmountZIndex: -500
+        });
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+        this.refs.countView.setNativeProps({style: {zIndex: -500}});
+        this.refs.amountView.setNativeProps({style: {zIndex: -500}});
+    }
+
+    /**
+     * listHeader点击已报销触发事件
+     */
+    listHeaderDoneReimbursementStatusPress() {
+        const {countArrowY, amountArrowY} = this.state;
+        this.props.changeState({
+            reimbursementStatus: 3,
+            canDelete: true,
+            showCheckbox: false,
+            reimbursementSelected: 3,
+            showCountDetail: false,
+            showAmountDetail: false,
+            invoiceCountZIndex: -500,
+            invoiceAmountZIndex: -500
+        });
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+        this.refs.countView.setNativeProps({style: {zIndex: -500}});
+        this.refs.amountView.setNativeProps({style: {zIndex: -500}});
+    }
+
+    /**
+     * Flatlist头部视图
+     * @returns {XML}
+     * @private
+     */
+    _listHeader = () => {
         return (
-            <View style={styles.container}>
-                <BackDialog
-                    thisComponent={this}
-                    isShow={this.props.invoice.showPickerShadow}
-                    backgroundClick={
-                        (component) => {
-                            Picker.hide();
-                            component.props.changeState({showPickerShadow: false});
-                        }
-                    }/>
-                <CommonLoading isShow={this.props.invoice.isLoading}/>
-                <PopDialog
-                    showVisible={this.props.invoice.showDialog}
-                    thisComponent={this}
-                    scanClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        Permissions.checkMultiplePermissions(['camera', 'photo'])
-                            .then(response => {
-                                //判断是否具有相机权限，相册权限
-                                if (!Util.checkPermission(response.camera)) {
-                                    this.props.changeState({
-                                        dialogTitle: Message.AUTHORITY_SETTING,
-                                        dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
-                                        showNoPermissionDialog: true,
-                                    });
-                                    return;
-                                }
-                                this.props.navigateScanQrCode()
-                            });
-
-
-                    }}
-                    photoClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        setTimeout(
-                            () => {
-                                this.ocrValidationFromCamera();
-                            },
-                            100
-                        );
-
-                    }}
-                    albumClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        setTimeout(
-                            () => {
-                                this.ocrValidationFromImageLibrary();
-                            },
-                            100
-                        );
-                    }}
-                    cancelClick={this._closeModal}/>
-                {
-                    this.props.invoice.showCheckbox
-                        ?
-                        (<Header
-                            titleText={Message.INVOICE_LIST_TITLE}
-                            thisComponent={this}
-                            showBackIcon={false}
-                            rightText={Message.CANCEL}
-                            rightClick={() => {
-                                this.props.changeState({
-                                    deleteConfirm: false,
-                                    showCountDetail: false,      //显示累计张数详情
-                                    showAmountDetail: false,     //显示累计金额详情
-                                    showDialog: false,          //是否显示提示对话框
-                                    showCheckbox: false,        //是否显示复选框
-
-                                    selectedItem: [],       //单行选中的发票
-                                    selectedItemIDCount: 0, //单行选中的发票ID数
-                                    selectedItemAmount: 0,  //单行选中的发票金额数
-                                    isSelectedItem: [],     //单行发票按钮是否选中
-                                    allItemCount: 0,       //列表所有发票数
-                                    allItemAmount: [],       //列表所有发票金额
-                                    allItem: [],            //列表所有发票
-                                    isSelectedAll: false,   //是否选择全选按钮
-                                    checkedInvoice: [],      //未查验的增票发票
-
-
-                                    selectedYear: '',
-                                    selectedMonth: '',
-                                    selectedDateStr: '',
-                                    defaultData: '全部',
-
-
-                                    /**
-                                     * 返回发票Data数组数据为：uuid,invoiceTypeCode,totalAmount,reimburseState,reimburseSerialNo,
-                                     * invoiceDate,invoiceDetail,isBlush,checkSate,isCanceled,isException,invoiceCount
-                                     */         //
-                                    dataWithoutReimbursement: [],       //未报销发票
-                                    dataWithinReimbursement: [],        //报销中发票
-                                    dataDoneReimbursement: [],          //已报销发票
-                                    reimbursementStatus: 0,             //报销状态，值0=未报销,2=报销中,3=已报销,默认0
-
-                                    preDeleteInvoiceId: '',                           //删除发票uuid
-
-                                    targetExpenseId: '',                         //进入票夹页面选择发票去保险单
-
-                                    canDelete: false,                   //左滑是否删除,报销0时可以删除，2、3时不可删除
-
-                                    isRefreshing: false,        //刷新中
-                                    showLoading: false,         //上拉加载时，是否显示加载信息,如‘正在加载...’
-
-                                    noReimbursementPage: 1,
-                                    noReimbursementLoadMore: false,
-
-                                    inReimbursementPage: 1,
-                                    inReimbursementLoadMore: false,
-
-                                    doneReimbursementPage: 1,
-                                    doneReimbursementLoadMore: false,
-
-                                    showPickerShadow: false,   //是否显示选择器阴影
-                                });
-                                this.props.loadInvoiceListReimbursedData();
-                                Picker.hide();
-                                this.backClick();
-                            }}
-                            rightIconStyle={{
-                                width: ScreenUtil.scaleSize(42),
-                                height: ScreenUtil.scaleSize(42),
-                                resizeMode: 'stretch',
-                            }}
-                        />)
-                        :
-                        (<Header
-                            titleText={Message.INVOICE_LIST_TITLE}
-                            thisComponent={this}
-                            showBackIcon={false}
-                            backClick={() => {
-                                this.backClick();
-                                Picker.hide();
-                            }}
-                            rightClick={() => {
-                                this.popDialog();
-                                Picker.hide();
-                            }}
-                            rightIcon={require('../../img/invoice/plus.png')}
-                            rightIconStyle={{
-                                width: ScreenUtil.scaleSize(42),
-                                height: ScreenUtil.scaleSize(42),
-                                resizeMode: 'stretch',
-                            }}
-                        />)
-                }
-                <Dialog
-                    titleText={Message.INVOICE_LIST_DELETE_CONFIRM}
-                    type={'confirm'}
-                    leftBtnText={Message.CANCEL}
-                    rightBtnText={Message.CONFIRM}
-                    modalVisible={this.props.invoice.deleteConfirm}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    onClose={this._closeModal.bind(this)}
-                    rightBtnClick={this.ensureDeleteClick.bind(this)}
-                    thisComponent={this}
-                />
-                <Dialog
-                    titleText={this.props.invoice.dialogTitle}
-                    content={this.props.invoice.dialogContent}
-                    type={'confirm'}
-                    leftBtnText={Message.CANCEL}
-                    rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
-                    modalVisible={this.props.invoice.showNoPermissionDialog}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    rightBtnClick={Permissions.openSettings}
-                    thisComponent={this}
-                    onClose={this.onCloseCamera.bind(this)}
-                />
-
+            <View>
                 {
                     this.props.invoice.showCheckbox ?
                         (null) :
                         (
-                            <Image
-                                style={{
-                                    width: deviceWidth,
-                                    height: ScreenUtil.scaleSize(193),
-                                    resizeMode: 'stretch'
-                                }}
+                            <ImageBackground
+                                style={styles.listHeaderBackgroundImageStyle}
                                 source={require('../../img/invoice/invoice_header_icon.jpg')}
                             >
-                                <View style={styles.statisticsView}>
-                                    <View style={{
-                                        flexDirection: 'row', justifyContent: 'center',
-                                        width: ScreenUtil.scaleSize(254)
-                                    }}>
-                                        <TouchableOpacity
-                                            style={{
-                                                marginTop: ScreenUtil.scaleSize(71),
-                                                marginBottom: ScreenUtil.scaleSize(74)
-                                            }}
-                                            onPress={() => {
-                                                if (Platform.OS === 'android') {
-                                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                                                        this.props.changeState({
-                                                            showPickerShadow: true, isShowDatePicker: true,
-                                                            showCountDetail: false, showAmountDetail: false,
-                                                        });
-                                                        this.createDatePicker();
-                                                        Picker.show();
-                                                    });
-                                                } else {
-                                                    this.props.changeState({
-                                                        showPickerShadow: true, isShowDatePicker: true,
-                                                        showCountDetail: false, showAmountDetail: false,
-                                                    });
-                                                    this.createDatePicker();
-                                                    Picker.show();
-                                                }
-                                            }}
-                                        >
-                                            <View
-                                                style={{
-                                                    height: ScreenUtil.scaleSize(48),
-                                                    alignItems: 'center',
-                                                    backgroundColor: 'transparent'
-                                                }}>
-                                                <Text
-                                                    style={{fontSize: ScreenUtil.setSpText(11), color: 'white'}}>
-                                                    {this.showEmptyDateData()}
-                                                </Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                if (Platform.OS === 'android') {
-                                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                                                        this.props.changeState({
-                                                            showPickerShadow: true, isShowDatePicker: true,
-                                                            showCountDetail: false, showAmountDetail: false,
-                                                        });
-                                                        this.createDatePicker();
-                                                        Picker.show();
-                                                    });
-                                                } else {
-                                                    this.props.changeState({
-                                                        showPickerShadow: true, isShowDatePicker: true,
-                                                        showCountDetail: false, showAmountDetail: false,
-                                                    });
-                                                    this.createDatePicker();
-                                                    Picker.show();
-                                                }
-                                            }}
-                                        >
-                                            {this.props.invoice.isShowDatePicker ? (
-                                                <Image source={require('./../../img/invoice/up.png')}
-                                                       style={[
-                                                           styles.downIcon,
-                                                           {
-                                                               marginVertical: ScreenUtil.scaleSize(93)
-                                                           }]}/>
-                                            ) : (
-                                                <Image source={require('./../../img/invoice/down.png')}
-                                                       style={[
-                                                           styles.downIcon,
-                                                           {
-                                                               marginVertical: ScreenUtil.scaleSize(93)
-                                                           }]}/>
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={{
-                                        width: ScreenUtil.scaleSize(2),
-                                        height: ScreenUtil.scaleSize(113),
-                                        marginVertical: ScreenUtil.scaleSize(40),
-                                        backgroundColor: 'white'
-                                    }}/>
-                                    <View style={{flexDirection: 'row', justifyContent: 'center'}}>
-                                        <View style={{
-                                            marginLeft: ScreenUtil.scaleSize(60),
-                                            marginVertical: ScreenUtil.scaleSize(40),
-                                            flexDirection: 'column'
-                                        }}>
-                                            <View style={{
-                                                flexDirection: 'row'
-                                            }}>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        this.props.changeState({
-                                                            showCountDetail: !this.props.invoice.showCountDetail,
-                                                            showAmountDetail: false
-                                                        });
-                                                    }}
-                                                >
-                                                    <View style={{
-                                                        height: ScreenUtil.scaleSize(40),
-                                                        backgroundColor: 'transparent'
-                                                    }}>
-                                                        <Text style={{
-                                                            fontSize: ScreenUtil.setSpText(9),
-                                                            color: 'white'
-                                                        }}>
-                                                            {Message.INVOICE_LIST_SUMMARY_COUNT}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={
-                                                        () => {
-                                                            this.props.changeState({
-                                                                showCountDetail: !this.props.invoice.showCountDetail,
-                                                                showAmountDetail: false
-                                                            });
-                                                        }
-                                                    }
-                                                >
-                                                    {this.props.invoice.showCountDetail ? (
-                                                        <Image source={require('./../../img/invoice/up.png')}
-                                                               style={[styles.downIcon, {marginTop: ScreenUtil.scaleSize(16.5)}]}/>
-                                                    ) : (
-                                                        <Image source={require('./../../img/invoice/down.png')}
-                                                               style={[styles.downIcon, {marginTop: ScreenUtil.scaleSize(16.5)}]}/>
-                                                    )}
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={{
-                                                marginTop: ScreenUtil.scaleSize(20),
-                                                height: ScreenUtil.scaleSize(53),
-                                                backgroundColor: 'transparent'
-                                            }}>
-                                                <Text style={{
-                                                    fontSize: ScreenUtil.setSpText(12.6),
-                                                    color: 'white'
-                                                }}>{this.props.invoice.zsl}</Text>
-                                            </View>
+                                <View style={styles.listHeaderLeftPartViewStyle}>
+                                    <TouchableOpacity
+                                        onPress={this.listHeaderDatePress.bind(this)}
+                                    >
+                                        <View
+                                            style={styles.listHeaderDateLabelViewStyle}>
+                                            <Text
+                                                style={styles.listHeaderDateLabelTextStyle}>
+                                                {this.showEmptyDateData()}
+                                            </Text>
                                         </View>
-                                        <View style={{
-                                            marginVertical: ScreenUtil.scaleSize(40),
-                                            marginLeft: ScreenUtil.scaleSize(60),
-                                            flexDirection: 'column'
-                                        }}>
-                                            <View style={{
-                                                flexDirection: 'row'
-                                            }}>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        this.props.changeState({
-                                                            showCountDetail: false,
-                                                            showAmountDetail: !this.props.invoice.showAmountDetail
-                                                        });
-                                                    }}
-                                                >
-                                                    <View style={{
-                                                        height: ScreenUtil.scaleSize(40),
-                                                        backgroundColor: 'transparent'
-                                                    }}>
-                                                        <Text style={{
-                                                            fontSize: ScreenUtil.setSpText(9),
-                                                            color: 'white'
-                                                        }}>
-                                                            {Message.INVOICE_LIST_SUMMARY_AMOUNT}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={
-                                                        () => {
-                                                            this.props.changeState({
-                                                                showCountDetail: false,
-                                                                showAmountDetail: !this.props.invoice.showAmountDetail
-                                                            });
-                                                        }
-                                                    }
-                                                >
-                                                    {this.props.invoice.showAmountDetail ? (
-                                                        <Image source={require('./../../img/invoice/up.png')}
-                                                               style={[styles.downIcon, {marginTop: ScreenUtil.scaleSize(16.5)}]}/>
-                                                    ) : (
-                                                        <Image source={require('./../../img/invoice/down.png')}
-                                                               style={[styles.downIcon, {marginTop: ScreenUtil.scaleSize(16.5)}]}/>
-                                                    )}
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={{
-                                                marginTop: ScreenUtil.scaleSize(20),
-                                                backgroundColor: 'transparent'
-                                            }}>
-                                                <Text style={{
-                                                    fontSize: ScreenUtil.setSpText(12.6),
-                                                    color: 'white'
-                                                }}>{this.props.invoice.zje}</Text>
-                                            </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{marginLeft: ScreenUtil.scaleSize(10)}}
+                                        onPress={this.listHeaderDatePress.bind(this)}
+                                    >
+                                        {this.props.invoice.isShowDatePicker ? (
+                                            <ImageBackground source={require('./../../img/invoice/up.png')}
+                                                             style={styles.downIcon}/>
+                                        ) : (
+                                            <ImageBackground source={require('./../../img/invoice/down.png')}
+                                                             style={styles.downIcon}/>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.listHeaderVerticalLineViewStyle}/>
+                                <View style={styles.listHeaderRightPartViewStyle}>
+                                    <View style={styles.listHeaderRightPartCountOrAmountParentViewStyle}>
+                                        <View style={styles.listHeaderRightPartCountOrAmountFirstChildrenViewStyle}>
+                                            <TouchableOpacity
+                                                onPress={this.listHeaderCountPress.bind(this)}
+                                            >
+                                                <View style={styles.rightPartCountOrAmountSecondChildrenViewStyle}>
+                                                    <Text style={styles.rightPartCountOrAmountSecondChildrenTextStyle}>
+                                                        {Message.INVOICE_LIST_SUMMARY_COUNT}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={this.listHeaderCountPress.bind(this)}
+                                            >
+                                                {
+                                                    <Animated.View
+                                                        style={[styles.rightPartCountOrAmountSecondChildrenAnimatedViewStyle,
+                                                            {
+                                                                transform: [{
+                                                                    rotateZ: interpolate(this.state.countArrowY, {
+                                                                        inputRange: [0, 0],
+                                                                        outputRange: ['0deg', '180deg']
+                                                                    })
+                                                                }]
+                                                            }]}
+                                                    >
+                                                        <ImageBackground
+                                                            source={require('./../../img/invoice/down.png')}
+                                                            style={[styles.downIcon]}/>
+                                                    </Animated.View>
+                                                }
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.rightPartCountOrAmountFirstChildTextViewStyle}>
+                                            <Text style={styles.rightPartCountOrAmountTextStyle}>
+                                                {this.props.invoice.zsl}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.listHeaderRightPartCountOrAmountParentViewStyle}>
+                                        <View
+                                            style={[styles.listHeaderRightPartCountOrAmountFirstChildrenViewStyle]}>
+                                            <TouchableOpacity
+                                                onPress={this.listHeaderAmountPress.bind(this)}
+                                            >
+                                                <View style={styles.rightPartCountOrAmountSecondChildrenViewStyle}>
+                                                    <Text style={styles.rightPartCountOrAmountSecondChildrenTextStyle}>
+                                                        {Message.INVOICE_LIST_SUMMARY_AMOUNT}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={this.listHeaderAmountPress.bind(this)}
+                                            >
+                                                {
+                                                    <Animated.View
+                                                        style={[styles.rightPartCountOrAmountSecondChildrenAnimatedViewStyle,
+                                                            {
+                                                                transform: [{
+                                                                    rotateZ: interpolate(this.state.amountArrowY, {
+                                                                        inputRange: [0, 0],
+                                                                        outputRange: ['0deg', '180deg']
+                                                                    })
+                                                                }]
+                                                            }]}
+                                                    >
+                                                        <ImageBackground
+                                                            source={require('./../../img/invoice/down.png')}
+                                                            style={styles.downIcon}/>
+                                                    </Animated.View>
+                                                }
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.rightPartCountOrAmountFirstChildTextViewStyle}>
+                                            <Text style={styles.rightPartCountOrAmountTextStyle}>
+                                                {this.props.invoice.zje}
+                                            </Text>
                                         </View>
                                     </View>
                                 </View>
-                            </Image>
+                            </ImageBackground>
                         )
                 }
-
-                {
-                    this.props.invoice.showCountDetail ? (
-                        <Image
-                            style={{
-                                width: ScreenUtil.scaleSize(335),
-                                height: ScreenUtil.scaleSize(258),
-                                resizeMode: 'stretch',
-                                position: 'absolute',
-                                top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 317 : 245),
-                                right: ScreenUtil.scaleSize(155),
-                                zIndex: 500
-                            }}
-                            source={require('../../img/invoice/count_shadow_box.png')}
-                        >
-                            <View style={{
-                                flexDirection: 'row', marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginTop: ScreenUtil.scaleSize(22),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.wbxzs}</Text>
-                                </View>
-                            </View>
-                            <View style={{
-                                height: 1 / PixelRatio.get(),
-                                backgroundColor: '#5D5D5D',
-                                marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginVertical: ScreenUtil.scaleSize(20)
-                            }}/>
-                            <View style={{
-                                flexDirection: 'row', paddingHorizontal: ScreenUtil.scaleSize(30),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_IN_REIMBURSEMENT}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.bxzzs}</Text>
-                                </View>
-                            </View>
-                            <View style={{
-                                height: 1 / PixelRatio.get(),
-                                backgroundColor: '#5D5D5D',
-                                marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginVertical: ScreenUtil.scaleSize(20)
-                            }}/>
-                            <View style={{
-                                flexDirection: 'row', paddingHorizontal: ScreenUtil.scaleSize(30),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_REIMBURSEMENT_ED}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.ybxzs}</Text>
-                                </View>
-                            </View>
-                        </Image>
-                    ) : null
-                }
-
-                {
-                    this.props.invoice.showAmountDetail ? (
-                        <Image
-                            style={{
-                                width: ScreenUtil.scaleSize(335),
-                                height: ScreenUtil.scaleSize(258),
-                                resizeMode: 'stretch',
-                                position: 'absolute',
-                                top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 317 : 245),
-                                right: ScreenUtil.scaleSize(170),
-                                zIndex: 500
-                            }}
-                            source={require('../../img/invoice/shadow_box.png')}
-                        >
-                            <View style={{
-                                flexDirection: 'row', marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginTop: ScreenUtil.scaleSize(22),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.wbxje}</Text>
-                                </View>
-                            </View>
-                            <View style={{
-                                height: 1 / PixelRatio.get(),
-                                backgroundColor: '#5D5D5D',
-                                marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginVertical: ScreenUtil.scaleSize(20)
-                            }}/>
-                            <View style={{
-                                flexDirection: 'row', paddingHorizontal: ScreenUtil.scaleSize(30),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_IN_REIMBURSEMENT}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.bxzje}</Text>
-                                </View>
-                            </View>
-                            <View style={{
-                                height: 1 / PixelRatio.get(),
-                                backgroundColor: '#5D5D5D',
-                                marginHorizontal: ScreenUtil.scaleSize(30),
-                                marginVertical: ScreenUtil.scaleSize(20)
-                            }}/>
-                            <View style={{
-                                flexDirection: 'row', paddingHorizontal: ScreenUtil.scaleSize(30),
-                                backgroundColor: 'transparent'
-                            }}>
-                                <View>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(9), color: 'white'}}>
-                                        {Message.INVOICE_LIST_REIMBURSEMENT_ED}
-                                    </Text>
-                                </View>
-                                <View style={{marginLeft: ScreenUtil.scaleSize(48)}}>
-                                    <Text style={{
-                                        fontSize: ScreenUtil.setSpText(9),
-                                        color: 'white'
-                                    }}>{this.props.invoice.ybxje}</Text>
-                                </View>
-                            </View>
-                        </Image>
-                    ) : null
-                }
-
                 <View style={this.renderListHeaderStyle()}>
                     {
                         this.props.invoice.showCheckbox ?
                             (null) :
                             (
                                 <View style={styles.reimbursementNavigator}>
-                                    <View style={{
-                                        flex: 1, height: ScreenUtil.scaleSize(44),
-                                        marginTop: ScreenUtil.scaleSize(14)
-                                    }}>
+                                    <TouchableOpacity
+                                        style={styles.listHeaderInvoiceStatusPressViewStyle}
+                                        onPress={this.listHeaderNoReimbursementStatusPress.bind(this)}>
+                                        <View style={{
+                                            height: ScreenUtil.scaleSize(30),
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Text style={this.renderNotReimbursementLabel()}>
+                                                {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.sectionSlideViewWithoutReimbursement}>
+                                            {this.props.invoice.reimbursementStatus == 0 ?
+                                                <Image
+                                                    style={styles.horizontalLine}
+                                                    source={require('./../../img/invoice/horizontal_line.png')}/>
+                                                : null
+                                            }
+
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.listHeaderInvoiceStatusPressViewStyle}
+                                        onPress={this.listHeaderInReimbursementStatusPress.bind(this)}>
+                                        <View style={{
+                                            height: ScreenUtil.scaleSize(30),
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Text
+                                                style={this.renderInReimbursementLabel()}>
+                                                {Message.INVOICE_LIST_IN_REIMBURSEMENT}
+                                            </Text>
+                                        </View>
+
+                                        <View style={[styles.sectionSlideViewWithoutReimbursement]}>
+                                            {this.props.invoice.reimbursementStatus == 2 ?
+                                                <Image
+                                                    style={styles.horizontalLine}
+                                                    source={require('./../../img/invoice/horizontal_line.png')}/>
+                                                : null
+                                            }
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.listHeaderInvoiceStatusPressViewStyle}
+                                        onPress={this.listHeaderDoneReimbursementStatusPress.bind(this)}>
+                                        <View style={{
+                                            height: ScreenUtil.scaleSize(30),
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Text
+                                                style={this.renderDoneReimbursementLabel()}>
+                                                {Message.INVOICE_LIST_REIMBURSEMENT_ED}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.sectionSlideViewWithoutReimbursement}>
+                                            {this.props.invoice.reimbursementStatus == 3 ?
+                                                <Image
+                                                    style={styles.horizontalLine}
+                                                    source={require('./../../img/invoice/horizontal_line.png')}/>
+                                                : null
+                                            }
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                            )
+                    }
+                </View>
+                <View style={{height: ScreenUtil.scaleSize(20), backgroundColor: '#F3F3F3'}}>
+                </View>
+            </View>
+        );
+    }
+
+    /**
+     * Flatlist滚动事件处理
+     * @param scrollView
+     * @private
+     */
+    _onScroll(scrollView) {
+        let offsetY = scrollView.nativeEvent.contentOffset.y; // 滑动起始距离
+        let targetOffset = ScreenUtil.scaleSize(193);
+        const {countArrowY, amountArrowY} = this.state;
+
+        countZIndex = -500;
+        amountZIndex = -500;
+
+        if (Math.round(offsetY) - Math.round(targetOffset) >= 0) {
+            this.refs.statusLabelView.setNativeProps({style: {zIndex: 30}});
+            this.refs.countView.setNativeProps({style: {zIndex: -500}});
+            this.refs.amountView.setNativeProps({style: {zIndex: -500}});
+        } else {
+            this.refs.statusLabelView.setNativeProps({style: {zIndex: -30}});
+            this.refs.countView.setNativeProps({style: {zIndex: -500}});
+            this.refs.amountView.setNativeProps({style: {zIndex: -500}});
+        }
+
+        if (Platform.OS == 'ios') {
+            this.renderScrollValue(scrollView);
+        }
+
+        this.state.dynamicHeight = offsetY;
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+        Picker.hide();
+
+    }
+
+    /**
+     * 渲染ios滚动时置顶视图的显示效果
+     * @returns {XML}
+     * @private
+     */
+    _renderDynamicView() {
+        if (Platform.OS == 'ios') {
+            const {scrollY} = this.state;
+            return (
+                <Animated.View
+                    style={{
+                        height: ScreenUtil.scaleSize(58),
+                        opacity: interpolate(scrollY, {
+                            inputRange: [0, ScreenUtil.scaleSize(193)],
+                            outputRange: [0, 1],
+                            extrapolate: 'clamp'
+                        })
+                    }}
+                >
+                    <View style={this.renderListHeaderStyle()}>
+                        {
+                            this.props.invoice.showCheckbox ?
+                                (null) :
+                                (
+                                    <View style={styles.reimbursementNavigator}>
                                         <TouchableOpacity
-                                            style={{
-                                                flex: 1,
-                                                justifyContent: 'center',
-                                                flexDirection: 'column',
-                                                alignItems: 'flex-start'
-                                            }}
+                                            style={styles.flatListScrollViewOutLayerTopViewStyle}
                                             onPress={() => {
                                                 this.props.changeState({
                                                     reimbursementStatus: 0,
@@ -1726,7 +1761,7 @@ class Invoice extends Component {
                                                     reimbursementSelected: 0
                                                 });
                                             }}>
-                                            <View style={{marginLeft: ScreenUtil.scaleSize(13)}}>
+                                            <View>
                                                 <Text style={this.renderNotReimbursementLabel()}>
                                                     {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
                                                 </Text>
@@ -1737,19 +1772,14 @@ class Invoice extends Component {
                                                     <Image
                                                         style={styles.horizontalLine}
                                                         source={require('./../../img/invoice/horizontal_line.png')}/>
-                                                    : <View style={styles.horizontalLine}/>
+                                                    : null
                                                 }
 
                                             </View>
                                         </TouchableOpacity>
-                                    </View>
 
-                                    <View style={{
-                                        flex: 1, height: ScreenUtil.scaleSize(44),
-                                        marginTop: ScreenUtil.scaleSize(14)
-                                    }}>
                                         <TouchableOpacity
-                                            style={{flex: 1, justifyContent: 'center'}}
+                                            style={styles.flatListScrollViewOutLayerTopViewStyle}
                                             onPress={() => {
                                                 this.props.changeState({
                                                     reimbursementStatus: 2,
@@ -1758,7 +1788,7 @@ class Invoice extends Component {
                                                     reimbursementSelected: 2
                                                 });
                                             }}>
-                                            <View style={{marginLeft: ScreenUtil.scaleSize(13)}}>
+                                            <View>
                                                 <Text
                                                     style={this.renderInReimbursementLabel()}>
                                                     {Message.INVOICE_LIST_IN_REIMBURSEMENT}
@@ -1770,23 +1800,13 @@ class Invoice extends Component {
                                                     <Image
                                                         style={styles.horizontalLine}
                                                         source={require('./../../img/invoice/horizontal_line.png')}/>
-                                                    : <View style={styles.horizontalLine}/>
+                                                    : null
                                                 }
                                             </View>
                                         </TouchableOpacity>
-                                    </View>
 
-                                    <View style={{
-                                        flex: 1, height: ScreenUtil.scaleSize(44),
-                                        marginTop: ScreenUtil.scaleSize(14)
-                                    }}>
                                         <TouchableOpacity
-                                            style={{
-                                                flex: 1,
-                                                justifyContent: 'center',
-                                                flexDirection: 'column',
-                                                alignItems: 'flex-start'
-                                            }}
+                                            style={styles.flatListScrollViewOutLayerTopViewStyle}
                                             onPress={() => {
                                                 this.props.changeState({
                                                     reimbursementStatus: 3,
@@ -1795,7 +1815,7 @@ class Invoice extends Component {
                                                     reimbursementSelected: 3
                                                 });
                                             }}>
-                                            <View style={{marginLeft: ScreenUtil.scaleSize(13)}}>
+                                            <View>
                                                 <Text
                                                     style={this.renderDoneReimbursementLabel()}>
                                                     {Message.INVOICE_LIST_REIMBURSEMENT_ED}
@@ -1807,117 +1827,613 @@ class Invoice extends Component {
                                                     <Image
                                                         style={styles.horizontalLine}
                                                         source={require('./../../img/invoice/horizontal_line.png')}/>
-                                                    : <View style={styles.horizontalLine}/>
+                                                    : null
                                                 }
                                             </View>
                                         </TouchableOpacity>
                                     </View>
-                                </View>
-                            )
-                    }
-                </View>
+                                )
+                        }
+                    </View>
+                </Animated.View>
+            );
+        }
+
+        return (
+            <View style={this.renderListHeaderStyle()}>
                 {
                     this.props.invoice.showCheckbox ?
+                        (null) :
                         (
-                            <View
-                                style={styles.sectionDateView}>
-                                <Image source={require('./../../img/invoice/calendar.png')}
-                                       style={styles.calendarIcon}/>
-                                <TouchableOpacity style={[styles.selectDateBtn]} onPress={() => {
-                                    if (Platform.OS === 'android') {
-                                        RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                            <View style={styles.reimbursementNavigator}>
+                                <TouchableOpacity
+                                    style={styles.flatListScrollViewOutLayerTopViewStyle}
+                                    onPress={() => {
+                                        this.props.changeState({
+                                            reimbursementStatus: 0,
+                                            canDelete: false,
+                                            reimbursementSelected: 0
+                                        });
+                                    }}>
+                                    <View>
+                                        <Text style={this.renderNotReimbursementLabel()}>
+                                            {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.sectionSlideViewWithoutReimbursement}>
+                                        {this.props.invoice.reimbursementStatus == 0 ?
+                                            <Image
+                                                style={styles.horizontalLine}
+                                                source={require('./../../img/invoice/horizontal_line.png')}/>
+                                            : null
+                                        }
+
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.flatListScrollViewOutLayerTopViewStyle}
+                                    onPress={() => {
+                                        this.props.changeState({
+                                            reimbursementStatus: 2,
+                                            canDelete: true,
+                                            showCheckbox: false,
+                                            reimbursementSelected: 2
+                                        });
+                                    }}>
+                                    <View>
+                                        <Text
+                                            style={this.renderInReimbursementLabel()}>
+                                            {Message.INVOICE_LIST_IN_REIMBURSEMENT}
+                                        </Text>
+                                    </View>
+
+                                    <View style={[styles.sectionSlideViewWithoutReimbursement]}>
+                                        {this.props.invoice.reimbursementStatus == 2 ?
+                                            <Image
+                                                style={styles.horizontalLine}
+                                                source={require('./../../img/invoice/horizontal_line.png')}/>
+                                            : null
+                                        }
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.flatListScrollViewOutLayerTopViewStyle}
+                                    onPress={() => {
+                                        this.props.changeState({
+                                            reimbursementStatus: 3,
+                                            canDelete: true,
+                                            showCheckbox: false,
+                                            reimbursementSelected: 3
+                                        });
+                                    }}>
+                                    <View>
+                                        <Text
+                                            style={this.renderDoneReimbursementLabel()}>
+                                            {Message.INVOICE_LIST_REIMBURSEMENT_ED}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.sectionSlideViewWithoutReimbursement}>
+                                        {this.props.invoice.reimbursementStatus == 3 ?
+                                            <Image
+                                                style={styles.horizontalLine}
+                                                source={require('./../../img/invoice/horizontal_line.png')}/>
+                                            : null
+                                        }
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                        )
+                }
+            </View>
+        );
+    }
+
+    /**
+     * 通过Animated.Value实现页面的滚动切换
+     * @param scrollView
+     */
+    renderScrollValue(scrollView) {
+        const {scrollY} = this.state;
+        const {nativeEvent: {contentOffset: {y: offsetY}}} = scrollView;
+        const p = Math.round(ScreenUtil.scaleSize(193));
+        const distance = Math.round(offsetY);
+        if (distance <= p || scrollY._value <= p) {
+            scrollY.setValue(distance < p ? 0 : distance);
+        }
+    }
+
+    /**
+     * 票夹head触发事件
+     */
+    renderInvoiceHead() {
+        this.props.changeState({
+            deleteConfirm: false,
+            showCountDetail: false,      //显示累计张数详情
+            showAmountDetail: false,     //显示累计金额详情
+            showDialog: false,          //是否显示提示对话框
+            showCheckbox: false,        //是否显示复选框
+
+            selectedItem: [],       //单行选中的发票
+            selectedItemIDCount: 0, //单行选中的发票ID数
+            selectedItemAmount: 0,  //单行选中的发票金额数
+            isSelectedItem: [],     //单行发票按钮是否选中
+            allItemCount: 0,       //列表所有发票数
+            allItemAmount: [],       //列表所有发票金额
+            allItem: [],            //列表所有发票
+            isSelectedAll: false,   //是否选择全选按钮
+            checkedInvoice: [],      //未查验的增票发票
+
+
+            selectedYear: '',
+            selectedMonth: '',
+            selectedDateStr: '',
+            defaultData: '全部',
+
+
+            /**
+             * 返回发票Data数组数据为：uuid,invoiceTypeCode,totalAmount,reimburseState,reimburseSerialNo,
+             * invoiceDate,invoiceDetail,isBlush,checkSate,isCanceled,isException,invoiceCount
+             */         //
+            dataWithoutReimbursement: [],       //未报销发票
+            dataWithinReimbursement: [],        //报销中发票
+            dataDoneReimbursement: [],          //已报销发票
+            reimbursementStatus: 0,             //报销状态，值0=未报销,2=报销中,3=已报销,默认0
+
+            preDeleteInvoiceId: '',                           //删除发票uuid
+
+            targetExpenseId: '',                         //进入票夹页面选择发票去保险单
+
+            canDelete: false,                   //左滑是否删除,报销0时可以删除，2、3时不可删除
+
+            isRefreshing: false,        //刷新中
+            showLoading: false,         //上拉加载时，是否显示加载信息,如‘正在加载...’
+
+            noReimbursementPage: 1,
+            noReimbursementLoadMore: false,
+
+            inReimbursementPage: 1,
+            inReimbursementLoadMore: false,
+
+            doneReimbursementPage: 1,
+            doneReimbursementLoadMore: false,
+
+            showPickerShadow: false,   //是否显示选择器阴影
+        });
+        this.props.loadInvoiceListReimbursedData();
+        Picker.hide();
+        this.backClick();
+    }
+
+    /**
+     * 渲染Flatlist endReached触发
+     */
+    renderFlatListEndReached() {
+        if (this.props.invoice.reimbursementStatus == 0 &&
+            this.props.invoice.noReimbursementLoadMore) {
+            this.props.changeState({noReimbursementLoadMore: false});
+            this.props.loadMoreNoReimbursementData({
+                invoiceTime: this.props.invoice.selectedDateStr,
+                reimburseState: 0,
+                invoiceTypeCode: '',
+                page: this.props.invoice.noReimbursementPage + 1,
+                rows: 20,
+                isSyn: 'N',
+            });
+        } else if (this.props.invoice.reimbursementStatus == 2 &&
+            this.props.invoice.inReimbursementLoadMore) {
+            this.props.changeState({inReimbursementLoadMore: false});
+            this.props.loadMoreInReimbursementData({
+                invoiceTime: this.props.invoice.selectedDateStr,
+                reimburseState: 2,
+                invoiceTypeCode: '',
+                page: this.props.invoice.inReimbursementPage + 1,
+                rows: 20,
+                isSyn: 'N',
+            });
+        } else if (this.props.invoice.reimbursementStatus == 3 &&
+            this.props.invoice.doneReimbursementLoadMore) {
+            this.props.changeState({doneReimbursementLoadMore: false});
+            this.props.loadMoreCompletedReimbursementData({
+                invoiceTime: this.props.invoice.selectedDateStr,
+                reimburseState: 3,
+                invoiceTypeCode: '',
+                page: this.props.invoice.doneReimbursementPage + 1,
+                rows: 20,
+                isSyn: 'N',
+            });
+        }
+    }
+
+    /**
+     * Flatlist footer component
+     * @returns {XML}
+     * @private
+     */
+    _listFooter() {
+        return (
+            this.props.invoice.showLoading ?
+                <View style={{
+                    flex: 1, flexDirection: 'row',
+                    alignSelf: 'center',
+                    width: ScreenUtil.scaleSize(280),
+                    paddingVertical: ScreenUtil.scaleSize(10)
+                }}>
+                    <View style={{
+                        flex: 1, padding: 0, margin: 0, width: ScreenUtil.scaleSize(25),
+                        alignSelf: 'flex-end'
+                    }}>
+                        <ActivityIndicator
+                            animating={this.props.invoice.showLoading}
+                            style={{height: ScreenUtil.scaleSize(20)}}
+                            size="small"/>
+                    </View>
+                    <View style={{
+                        flex: 1, padding: 0, margin: 0, height: ScreenUtil.scaleSize(20),
+                        alignSelf: 'flex-start', justifyContent: 'center'
+                    }}>
+                        <Text style={{fontSize: ScreenUtil.setSpText(8), color: '#666666'}}>
+                            {Message.INVOICE_LIST_LOADING}
+                        </Text>
+                    </View>
+                </View> : <View/>
+        )
+    }
+
+    /**
+     * 设置Flatlist每行的index作为key
+     * @param item
+     * @param index
+     * @private
+     */
+    _keyExtractor = (item, index) => index;
+
+    /**
+     * 关闭票夹阴影框公用方法
+     */
+    commonClosedShadowbox() {
+        const {countArrowY, amountArrowY} = this.state;
+        countZIndex = -500;
+        amountZIndex = -500;
+        this.refs.countView.setNativeProps({
+            style: {zIndex: -500}
+        });
+        this.refs.amountView.setNativeProps({
+            style: {zIndex: -500}
+        });
+        countArrowY.setValue(0);
+        amountArrowY.setValue(0);
+    }
+
+    render() {
+
+        return (
+            <View style={styles.container}>
+                <BlurView
+                    style={{
+                        position: "absolute",
+                        top: 0, left: 0, bottom: 0, right: 0,
+                        flex: 1,
+                        zIndex: (this.props.invoice.viewRef != null ? 300 : -99)
+                    }}
+                    viewRef={this.props.invoice.viewRef}
+                    blurType="light"
+                    blurAmount={10}/>
+
+                <View ref="blurView" style={styles.blurViewStyle}>
+                    <BackDialog
+                        thisComponent={this}
+                        isShow={this.props.invoice.showPickerShadow}
+                        backgroundClick={
+                            (component) => {
+                                Picker.hide();
+                                component.props.changeState({showPickerShadow: false, isShowDatePicker: false});
+                            }
+                        }/>
+                    <CommonLoading isShow={this.props.invoice.isLoading}/>
+                    <PopDialog
+                        showVisible={this.props.invoice.showDialog}
+                        thisComponent={this}
+                        scanClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            Permissions.checkMultiplePermissions(['camera', 'photo'])
+                                .then(response => {
+                                    //判断是否具有相机权限，相册权限
+                                    if (!Util.checkPermission(response.camera)) {
+                                        this.props.changeState({
+                                            dialogTitle: Message.AUTHORITY_SETTING,
+                                            dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
+                                            showNoPermissionDialog: true,
+                                        });
+                                        return;
+                                    }
+                                    this.props.navigateScanQrCode()
+                                });
+
+
+                        }}
+                        photoClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            setTimeout(
+                                () => {
+                                    this.ocrValidationFromCamera();
+                                },
+                                100
+                            );
+
+                        }}
+                        albumClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            setTimeout(
+                                () => {
+                                    this.ocrValidationFromImageLibrary();
+                                },
+                                100
+                            );
+                        }}
+                        cancelClick={this._closeModal}
+                        backClick={() => this.props.changeState({showDialog: false})}
+                    />
+                    {
+                        this.props.invoice.showCheckbox
+                            ?
+                            (<Header
+                                titleText={Message.INVOICE_LIST_TITLE}
+                                thisComponent={this}
+                                showBackIcon={false}
+                                rightText={Message.CANCEL}
+                                rightClick={this.renderInvoiceHead.bind(this)}
+                                rightIconStyle={{
+                                    width: ScreenUtil.scaleSize(42),
+                                    height: ScreenUtil.scaleSize(42),
+                                    resizeMode: 'stretch',
+                                }}
+                            />)
+                            :
+                            (<Header
+                                titleText={Message.INVOICE_LIST_TITLE}
+                                thisComponent={this}
+                                showBackIcon={false}
+                                backClick={() => {
+                                    this.backClick();
+                                    Picker.hide();
+                                }}
+                                rightClick={() => {
+                                    this.commonClosedShadowbox();
+                                    this.props.changeState({
+                                        invoiceCountZIndex: -500,
+                                        invoiceAmountZIndex: -500
+
+                                    });
+
+                                    Picker.hide();
+
+                                    this.popDialog();
+                                }}
+                                rightIcon={require('../../img/invoice/plus.png')}
+                                rightIconStyle={{
+                                    width: ScreenUtil.scaleSize(42),
+                                    height: ScreenUtil.scaleSize(42),
+                                    resizeMode: 'stretch',
+                                }}
+                            />)
+                    }
+                    <Dialog
+                        content={Message.INVOICE_LIST_DELETE_CONFIRM}
+                        type={'confirm'}
+                        leftBtnText={Message.CANCEL}
+                        rightBtnText={Message.CONFIRM}
+                        modalVisible={this.props.invoice.deleteConfirm}
+                        leftBtnStyle={{color: '#A5A5A5',}}
+                        rightBtnStyle={{color: '#FFAA00',}}
+                        onClose={this._closeModal.bind(this)}
+                        rightBtnClick={this.ensureDeleteClick.bind(this)}
+                        thisComponent={this}
+                    />
+                    <Dialog
+                        titleText={this.props.invoice.dialogTitle}
+                        content={this.props.invoice.dialogContent}
+                        type={'confirm'}
+                        leftBtnText={Message.CANCEL}
+                        rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
+                        modalVisible={this.props.invoice.showNoPermissionDialog}
+                        leftBtnStyle={{color: '#A5A5A5',}}
+                        rightBtnStyle={{color: '#FFAA00',}}
+                        rightBtnClick={Permissions.openSettings}
+                        thisComponent={this}
+                        onClose={this.onCloseCamera.bind(this)}
+                    />
+
+                    {
+                        <ImageBackground
+                            style={{
+                                width: ScreenUtil.scaleSize(335),
+                                height: ScreenUtil.scaleSize(258),
+                                resizeMode: 'stretch',
+                                position: 'absolute',
+                                top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 271 : 236) - this.state.dynamicHeight,
+                                left: ScreenUtil.scaleSize(285),
+                                zIndex: -500
+                            }}
+                            source={require('../../img/invoice/count_shadow_box.png')}
+                            ref="countView"
+                        >
+                            <BlurView
+                                style={{
+                                    position: "absolute",
+                                    top: ScreenUtil.scaleSizeNew(13),
+                                    left: 0, bottom: 0, right: 0,
+                                    borderRadius: ScreenUtil.scaleSize(8),
+                                }}
+                                blurType="dark"
+                                blurAmount={10}
+                            />
+                            <View style={styles.countOrAmountShadowFirstChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.wbxzs}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.countOrAmountShadowSeparatorViewStyle}/>
+                            <View style={styles.countOrAmountShadowChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_IN_REIMBURSEMENT}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.bxzzs}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.countOrAmountShadowSeparatorViewStyle}/>
+                            <View style={styles.countOrAmountShadowChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_REIMBURSEMENT_ED}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.ybxzs}
+                                    </Text>
+                                </View>
+                            </View>
+                        </ImageBackground>
+                    }
+
+                    {
+                        <ImageBackground
+                            style={{
+                                width: ScreenUtil.scaleSize(335),
+                                height: ScreenUtil.scaleSize(258),
+                                resizeMode: 'stretch',
+                                position: 'absolute',
+                                top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 271 : 236) - this.state.dynamicHeight,
+                                left: ScreenUtil.scaleSize(375),
+                                zIndex: -500
+                            }}
+                            source={require('../../img/invoice/shadow_box.png')}
+                            ref="amountView"
+                        >
+                            <BlurView
+                                style={{
+                                    position: "absolute",
+                                    top: ScreenUtil.scaleSizeNew(13),
+                                    left: 0, bottom: 0, right: 0,
+                                    borderRadius: ScreenUtil.scaleSize(8),
+                                }}
+                                blurType="dark"
+                                blurAmount={10}
+                            />
+                            <View style={styles.countOrAmountShadowFirstChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_NOT_REIMBURSEMENT}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.wbxje}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.countOrAmountShadowSeparatorViewStyle}/>
+                            <View style={styles.countOrAmountShadowChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_IN_REIMBURSEMENT}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.bxzje}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.countOrAmountShadowSeparatorViewStyle}/>
+                            <View style={styles.countOrAmountShadowChildViewStyle}>
+                                <View>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {Message.INVOICE_LIST_REIMBURSEMENT_ED}
+                                    </Text>
+                                </View>
+                                <View style={styles.countOrAmountShadowLabelViewStyle}>
+                                    <Text style={styles.countOrAmountShadowTextStyle}>
+                                        {this.props.invoice.ybxje}
+                                    </Text>
+                                </View>
+                            </View>
+                        </ImageBackground>
+                    }
+
+                    {
+                        this.props.invoice.showCheckbox ?
+                            (
+                                <View
+                                    style={styles.sectionDateView}>
+                                    <Image source={require('./../../img/invoice/calendar.png')}
+                                           style={styles.calendarIcon}/>
+                                    <TouchableOpacity style={[styles.selectDateBtn]} onPress={() => {
+                                        if (Platform.OS === 'android') {
+                                            RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                                this.props.changeState({showPickerShadow: true});
+                                                this.createDatePicker();
+                                                Picker.show();
+                                            });
+                                        } else {
                                             this.props.changeState({showPickerShadow: true});
                                             this.createDatePicker();
                                             Picker.show();
-                                        });
-                                    } else {
-                                        this.props.changeState({showPickerShadow: true});
-                                        this.createDatePicker();
-                                        Picker.show();
-                                    }
-                                }}>
-                                    <Text style={[styles.dateText]}>{
-                                        this.showEmptyDateData()
-                                    }</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (null)
-                }
-                <FlatList
-                    style={{
-                        marginTop: ScreenUtil.scaleSize(20),
-                        paddingTop: ScreenUtil.scaleSize(14),
-                        backgroundColor: '#FFFFFF'
-                    }}
-                    data={this.reimbursementStatus()}
-                    onRefresh={() => {
-                        this.refreshReimbursementByStatus();
-                    }}
-                    refreshing={this.props.invoice.isRefreshing}
-                    onEndReached={() => {
-                        if (this.props.invoice.reimbursementStatus == 0 && this.props.invoice.noReimbursementLoadMore) {
-                            this.props.changeState({noReimbursementLoadMore: false});
-                            this.props.loadMoreNoReimbursementData({
-                                invoiceTime: this.props.invoice.selectedDateStr,
-                                reimburseState: 0,
-                                invoiceTypeCode: '',
-                                page: this.props.invoice.noReimbursementPage + 1,
-                                rows: 20,
-                                isSyn: 'N',
-                            });
-                        } else if (this.props.invoice.reimbursementStatus == 2 && this.props.invoice.inReimbursementLoadMore) {
-                            this.props.changeState({inReimbursementLoadMore: false});
-                            this.props.loadMoreInReimbursementData({
-                                invoiceTime: this.props.invoice.selectedDateStr,
-                                reimburseState: 2,
-                                invoiceTypeCode: '',
-                                page: this.props.invoice.inReimbursementPage + 1,
-                                rows: 20,
-                                isSyn: 'N',
-                            });
-                        } else if (this.props.invoice.reimbursementStatus == 3 && this.props.invoice.doneReimbursementLoadMore) {
-                            this.props.changeState({doneReimbursementLoadMore: false});
-                            this.props.loadMoreCompletedReimbursementData({
-                                invoiceTime: this.props.invoice.selectedDateStr,
-                                reimburseState: 3,
-                                invoiceTypeCode: '',
-                                page: this.props.invoice.doneReimbursementPage + 1,
-                                rows: 20,
-                                isSyn: 'N',
-                            });
-                        }
-                    }}
-                    onEndReachedThreshold={0.03}
-                    renderItem={({item, index}) => this.renderInvoiceItem(item, index)}
-                    ListFooterComponent={
-                        (this.props.invoice.showLoading) ?
-                            <View style={{
-                                flex: 1, flexDirection: 'row',
-                                alignSelf: 'center',
-                                width: ScreenUtil.scaleSize(280),
-                                paddingVertical: ScreenUtil.scaleSize(10)
-                            }}>
-                                <View style={{
-                                    flex: 1, padding: 0, margin: 0, width: ScreenUtil.scaleSize(25),
-                                    alignSelf: 'flex-end'
-                                }}>
-                                    <ActivityIndicator
-                                        animating={this.props.invoice.showLoading}
-                                        style={{height: ScreenUtil.scaleSize(20)}}
-                                        size="small"/>
+                                        }
+                                    }}>
+                                        <Text style={[styles.dateText]}>{
+                                            this.showEmptyDateData()
+                                        }</Text>
+                                    </TouchableOpacity>
                                 </View>
-                                <View style={{
-                                    flex: 1, padding: 0, margin: 0, height: ScreenUtil.scaleSize(20),
-                                    alignSelf: 'flex-start', justifyContent: 'center'
-                                }}>
-                                    <Text style={{fontSize: ScreenUtil.setSpText(8), color: '#666666'}}>
-                                        {Message.INVOICE_LIST_LOADING}
-                                    </Text>
-                                </View>
-                            </View> : <View/>
+                            ) : (null)
                     }
-                />
-                {this.renderBottom()}
+                    {
+                        <View style={styles.statusLabelViewStyle} ref="statusLabelView">
+                            {
+                                this._renderDynamicView()
+                            }
+                        </View>
+                    }
+                    <FlatList
+                        style={styles.multiSelectedStyle}
+                        data={this.reimbursementStatus()}
+                        onRefresh={() => {
+                            this.props.refreshNoReimbursementData(this.props.invoice.selectedDateStr);
+                        }}
+                        refreshing={this.props.invoice.isRefreshing}
+                        onEndReached={this.renderFlatListEndReached.bind(this)}
+                        onEndReachedThreshold={0.03}
+                        ListHeaderComponent={this._listHeader}
+                        onScroll={(scrollView) => {
+                            if (!this.props.invoice.showCheckbox) {
+                                this._onScroll(scrollView);
+                            }
+                        }}
+                        scrollEventThrottle={10}
+                        renderItem={({item, index}) => this.renderInvoiceItem(item, index)}
+                        ListFooterComponent={this._listFooter.bind(this)}
+                        keyExtractor={this._keyExtractor}
+                    />
+                    {this.renderBottom()}
+                </View>
+
             </View>
         )
     }
@@ -1953,7 +2469,8 @@ function mapDispatchToProps(dispatch) {
         loadInvoiceListDataReimbursement: loadInvoiceListDataReimbursement,
         loadInvoiceListDataReimbursementByDate: loadInvoiceListDataReimbursementByDate,
         loadInvoiceListReimbursedData: loadInvoiceListReimbursedData,
-        getApplyType
+        getApplyType,
+        changeAppState: changeAppState,
     }, dispatch);
 }
 
@@ -1964,115 +2481,14 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F3F3F3'
     },
-    statisticsView: {
-        flexDirection: 'row',
-        height: ScreenUtil.scaleSize(193)
-    },
-    statisticsItemView: {
-        flexDirection: 'column',
-        alignItems: 'center',
-        width: deviceWidth / 4,
-        height: ScreenUtil.scaleSize(128)
-    },
-    summaryView: {
-        flexDirection: 'row',
-        width: deviceWidth,
-        height: ScreenUtil.scaleSize(128),
-        backgroundColor: 'white',
-    },
-    summaryItemView: {
-        flexDirection: 'column',
-        alignItems: 'center',
-        width: deviceWidth / 2,
-        height: ScreenUtil.scaleSize(128)
-    },
-
-    summaryItemViewTitle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: deviceWidth / 2,
-        height: ScreenUtil.scaleSize(40),
-        marginTop: ScreenUtil.scaleSize(20)
-    },
-    summaryItemViewValue: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: deviceWidth / 2,
-        height: ScreenUtil.scaleSize(40),
-        marginTop: ScreenUtil.scaleSize(10)
-    },
-    summaryFont: {
-        fontSize: ScreenUtil.setSpText(9),
-        color: '#666666'
-    },
-    summaryIcon: {
-        marginLeft: ScreenUtil.scaleSize(91),
-        width: ScreenUtil.scaleSize(28),
-        height: ScreenUtil.scaleSize(36),
-        resizeMode: Image.resizeMode.contain,
-    },
     downIcon: {
-        marginLeft: ScreenUtil.scaleSize(10),
         width: ScreenUtil.scaleSize(13),
         height: ScreenUtil.scaleSize(7),
         resizeMode: Image.resizeMode.contain,
     },
-    summaryTitle: {
-        marginLeft: ScreenUtil.scaleSize(10),
-        height: ScreenUtil.scaleSize(40),
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    sectionView: {
-        marginTop: ScreenUtil.scaleSize(20),
-        height: ScreenUtil.scaleSize(153),
-        backgroundColor: 'white'
-    },
-    sectionHeaderView: {
-        width: deviceWidth,
-        height: ScreenUtil.scaleSize(60),
-        borderBottomWidth: ScreenUtil.scaleSize(1),
-        borderBottomColor: '#DEDEDE'
-    },
-    sectionHeaderRow: {
-        flexDirection: 'row',
-        // alignItems: 'center',
-        // width: deviceWidth,
-        flex: 1,
-        height: ScreenUtil.scaleSize(55),
-    },
-    sectionSlideView: {
-        flexDirection: 'row',
-        flex: 1,
-        marginTop: ScreenUtil.scaleSize(10),
-        width: deviceWidth,
-        height: ScreenUtil.scaleSize(4),
-        backgroundColor: '#DEDEDE'
-    },
-    reimbursementWithoutLabel: {
-        marginLeft: ScreenUtil.scaleSize(92),
-        width: ScreenUtil.scaleSize(90)
-    },
-    reimbursementWithinLabel: {
-        // marginLeft: deviceWidth / 2 - ScreenUtil.scaleSize(227),
-        width: ScreenUtil.scaleSize(90)
-    },
-    reimbursementDoneLabel: {
-        marginLeft: deviceWidth / 2 - ScreenUtil.scaleSize(182),
-        // marginRight: ScreenUtil.scaleSize(92),
-        width: ScreenUtil.scaleSize(90)
-    },
-    selectedLine: {
-        width: deviceWidth,
-        height: ScreenUtil.scaleSize(4)
-    },
     sectionSlideViewWithoutReimbursement: {
         width: ScreenUtil.scaleSize(96),
-        marginTop: ScreenUtil.scaleSize(14),
-        paddingHorizontal: 0,
-        marginHorizontal: 0,
+        left: (deviceWidth / 3 - ScreenUtil.scaleSize(96)) / 2,
         position: 'absolute',
         bottom: 0,
     },
@@ -2083,12 +2499,6 @@ const styles = StyleSheet.create({
         height: ScreenUtil.scaleSize(90),
         paddingVertical: ScreenUtil.scaleSize(20),
         backgroundColor: '#FFFFFF'
-    },
-    hiddenSectionDateView: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: deviceWidth,
-        height: ScreenUtil.scaleSize(93),
     },
 
     horizontalLine: {
@@ -2122,21 +2532,22 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: ScreenUtil.scaleSize(40)
+        backgroundColor: '#F3F3F3'
+        // padding: ScreenUtil.scaleSize(40)
     },
 
     standaloneRowFront: {
         alignItems: 'center',
         width: deviceWidth,
-        height: ScreenUtil.scaleSize(122)
+        height: ScreenUtil.scaleSize(123),
+        backgroundColor: '#FFFFFF'
     },
 
     standaloneRowFrontView: {
-        alignItems: 'center',
-        marginBottom: ScreenUtil.scaleSize(5),
         padding: 0,
         marginHorizontal: 0,
-        height: ScreenUtil.scaleSize(122)
+        height: ScreenUtil.scaleSize(123),
+        width: 0.84 * deviceWidth
     },
 
     backTextWhite: {
@@ -2146,9 +2557,10 @@ const styles = StyleSheet.create({
     uncheckedIcon: {
         position: 'absolute',
         right: ScreenUtil.scaleSize(49.6),
-        top: ScreenUtil.scaleSize(0.3),
-        width: ScreenUtil.scaleSize(117.4),
-        height: ScreenUtil.scaleSize(117.4)
+        top: ScreenUtil.scaleSize(14),
+        width: ScreenUtil.scaleSize(94),
+        height: ScreenUtil.scaleSize(94),
+        resizeMode: 'stretch',
     },
     invoiceItemHeader: {
         flexDirection: 'row',
@@ -2166,17 +2578,18 @@ const styles = StyleSheet.create({
     },
     invoiceItemHeaderView: {
         flexDirection: 'row',
-        width: 0.9 * deviceWidth,
+        width: 0.84 * deviceWidth,
         height: ScreenUtil.scaleSize(33),
         alignItems: 'center',
-        marginTop: ScreenUtil.scaleSize(14)
+        marginTop: ScreenUtil.scaleSize(14),
     },
     invoiceItemDetailView: {
         flexDirection: 'row',
-        width: 0.9 * deviceWidth,
+        width: 0.84 * deviceWidth,
         height: ScreenUtil.scaleSize(33),
         alignItems: 'center',
-        marginTop: ScreenUtil.scaleSize(28)
+        marginTop: ScreenUtil.scaleSize(28),
+        marginBottom: ScreenUtil.scaleSize(14)
     },
     invoiceIcon: {
         marginLeft: ScreenUtil.scaleSize(30),
@@ -2188,22 +2601,22 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent",
         marginLeft: ScreenUtil.scaleSize(10),
         color: '#666666',
-        fontSize: ScreenUtil.setSpText(7)
+        fontSize: ScreenUtil.setSpText(8)
     },
     invoiceItemAmount: {
-        flex: 1,
+        // flex: 1,
         backgroundColor: "transparent",
         marginRight: ScreenUtil.scaleSize(30),
-        width: ScreenUtil.scaleSize(200),
+        // width: ScreenUtil.scaleSize(180),
         textAlign: 'right',
         color: '#FFAA00',
-        fontSize: ScreenUtil.setSpText(7)
+        fontSize: ScreenUtil.setSpText(8)
     },
     invoiceItemAmountText: {
-        flex: 1,
+        // flex: 1,
         backgroundColor: "transparent",
         paddingRight: ScreenUtil.scaleSize(30),
-        width: ScreenUtil.scaleSize(200),
+        // width: ScreenUtil.scaleSize(180),
         textAlign: 'right',
         color: '#FFAA00',
         fontSize: ScreenUtil.setSpText(7),
@@ -2212,42 +2625,14 @@ const styles = StyleSheet.create({
         color: '#ABABAB',
         backgroundColor: "transparent",
         marginLeft: ScreenUtil.scaleSize(30),
-        fontSize: ScreenUtil.setSpText(7),
-    },
-    separatorLine: {
-        flex: 1,
-        marginHorizontal: ScreenUtil.scaleSize(30)
-    },
-    summaryDetailViewBg: {
-        backgroundColor: "white",
-    },
-    summaryDetailView: {
-        flexDirection: 'row',
-        width: deviceWidth,
-        justifyContent: 'space-around',
-        height: ScreenUtil.scaleSize(128),
-        backgroundColor: 'white'
-    },
-    summaryDetailItemView: {
-        flexDirection: 'column',
-        alignItems: 'center',
-        width: (deviceWidth - ScreenUtil.scaleSize(40)) / 3,
-        height: ScreenUtil.scaleSize(128)
-    },
-
-    summaryDetailFont: {
         fontSize: ScreenUtil.setSpText(8),
-        width: (deviceWidth - ScreenUtil.scaleSize(40)) / 3,
-        marginTop: ScreenUtil.scaleSize(25),
-        textAlign: 'center',
-        color: '#ABABAB'
     },
     bottomView: {
         borderTopWidth: 1 / PixelRatio.get(),
         borderColor: '#DEDEDE',
         flexDirection: 'row',
         height: ScreenUtil.scaleSize(96),
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FDFDFD',
         opacity: 0.9
     },
     selectedSummary: {
@@ -2287,38 +2672,176 @@ const styles = StyleSheet.create({
     },
     checkboxView: {
         alignItems: 'center',
-        width: 0.1 * deviceWidth,
+        width: 0.16 * deviceWidth,
         marginTop: ScreenUtil.scaleSize(44)
     },
-    moreTxt: {
-        fontSize: ScreenUtil.setSpText(10),
-        color: '#666666',
-    },
-    cancelText: {
-        position: 'absolute',
-        height: ScreenUtil.scaleSize(93),
-        left: ScreenUtil.scaleSize(20),
-        top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 35 : 0),
-        justifyContent: 'center',
-    },
-    cancelAction: {
-        position: 'absolute',
-        width: deviceWidth,
-        height: deviceHeight,
-        backgroundColor: '#000000',
-        opacity: 0.45,
-        // backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    },
     invoiceRowBtnIcon: {
-        width: ScreenUtil.scaleSize(60),
-        height: ScreenUtil.scaleSize(60),
-        alignSelf: 'center'
+        width: ScreenUtil.scaleSize(50),
+        height: ScreenUtil.scaleSize(50),
+        alignSelf: 'center',
+        justifyContent: 'center'
     },
     reimbursementNavigator: {
         width: deviceWidth,
         flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
         height: ScreenUtil.scaleSize(58),
-        marginLeft: ScreenUtil.scaleSize(92),
         padding: 0
+    },
+    listHeaderBackgroundImageStyle: {
+        width: deviceWidth,
+        height: ScreenUtil.scaleSize(193),
+        resizeMode: 'stretch',
+        flexDirection: 'row'
+    },
+    // Flatlist listheader左部分视图样式
+    listHeaderLeftPartViewStyle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: ScreenUtil.scaleSize(254),
+        height: ScreenUtil.scaleSize(193)
+    },
+    // Flatlist listheader左部分视图日期显示视图样式
+    listHeaderDateLabelViewStyle: {
+        height: ScreenUtil.scaleSize(48),
+        backgroundColor: 'transparent',
+        justifyContent: 'center'
+    },
+    // Flatlist listheader左部分视图日期显示字体样式
+    listHeaderDateLabelTextStyle: {
+        fontSize: ScreenUtil.setSpText(11),
+        color: 'white'
+    },
+    // Flatlist listheader竖直线视图样式
+    listHeaderVerticalLineViewStyle: {
+        width: 1 / PixelRatio.get(),
+        height: ScreenUtil.scaleSize(113),
+        marginVertical: ScreenUtil.scaleSize(40),
+        backgroundColor: 'white'
+    },
+    // Flatlist listheader右部分视图样式
+    listHeaderRightPartViewStyle: {
+        flexDirection: 'row',
+        height: ScreenUtil.scaleSize(193),
+        width: deviceWidth - ScreenUtil.scaleSize(254) - 1 / PixelRatio.get()
+    },
+    // Flatlist listheader右部分视图-累计张数或金额父视图样式
+    listHeaderRightPartCountOrAmountParentViewStyle: {
+        marginLeft: ScreenUtil.scaleSize(60),
+        height: ScreenUtil.scaleSize(113),
+        alignSelf: 'center',
+        justifyContent: 'flex-start',
+        flexDirection: 'column'
+    },
+    // Flatlist listheader右部分视图-累计张数或金额一代子视图label view样式
+    listHeaderRightPartCountOrAmountFirstChildrenViewStyle: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        height: ScreenUtil.scaleSize(40)
+    },
+    // Flatlist listheader右部分视图-累计张数或金额一代子视图text view样式
+    rightPartCountOrAmountFirstChildTextViewStyle: {
+        marginTop: ScreenUtil.scaleSize(20),
+        height: ScreenUtil.scaleSize(53),
+        backgroundColor: 'transparent'
+    },
+    // Flatlist listheader右部分视图-累计张数或金额text样式
+    rightPartCountOrAmountTextStyle: {
+        fontSize: ScreenUtil.setSpText(12.6),
+        color: 'white'
+    },
+    // Flatlist listheader右部分视图-累计张数或金额二代子视图label view样式
+    rightPartCountOrAmountSecondChildrenViewStyle: {
+        height: ScreenUtil.scaleSize(40),
+        backgroundColor: 'transparent',
+        justifyContent: 'center'
+    },
+    // Flatlist listheader右部分视图-累计张数或金额二代text样式
+    rightPartCountOrAmountSecondChildrenTextStyle: {
+        fontSize: ScreenUtil.setSpText(9),
+        color: 'white'
+    },
+    // Flatlist listheader右部分视图-累计张数或金额二代子视图arrow animated view样式
+    rightPartCountOrAmountSecondChildrenAnimatedViewStyle: {
+        flex: 1,
+        marginLeft: ScreenUtil.scaleSize(10),
+        height: ScreenUtil.scaleSize(40),
+        justifyContent: 'center'
+    },
+    // Flatlist listheader底部发票状态视图样式
+    listHeaderInvoiceStatusPressViewStyle: {
+        width: deviceWidth / 3,
+        height: ScreenUtil.scaleSize(58),
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    // flatlist 滚动时列表置顶视图样式
+    flatListScrollViewOutLayerTopViewStyle: {
+        width: deviceWidth / 3,
+        height: ScreenUtil.scaleSize(58),
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    // 累计张数或金额阴影框视图样式, Deprecated
+    countOrAmountShadowImageBackgroundViewStyle: {
+        width: ScreenUtil.scaleSize(335),
+        height: ScreenUtil.scaleSize(258),
+        resizeMode: 'stretch',
+        position: 'absolute',
+        top: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 317 : 245),
+        left: ScreenUtil.scaleSize(326),
+        zIndex: -500
+    },
+    // 累计张数或金额阴影框视图第一个子视图样式
+    countOrAmountShadowFirstChildViewStyle: {
+        flexDirection: 'row',
+        marginHorizontal: ScreenUtil.scaleSize(30),
+        marginTop: ScreenUtil.scaleSize(14),
+        backgroundColor: 'transparent',
+        height: ScreenUtil.scaleSize(80),
+        alignItems: 'center'
+    },
+    // 累计张数或金额阴影框视图子视图样式
+    countOrAmountShadowChildViewStyle: {
+        flexDirection: 'row',
+        paddingHorizontal: ScreenUtil.scaleSize(30),
+        backgroundColor: 'transparent',
+        height: ScreenUtil.scaleSize(80),
+        alignItems: 'center'
+    },
+    // 累计张数或金额阴影框视图分割线视图样式
+    countOrAmountShadowSeparatorViewStyle: {
+        height: 1 / PixelRatio.get(),
+        backgroundColor: '#5D5D5D',
+        marginHorizontal: ScreenUtil.scaleSize(30)
+    },
+    // 累计张数或金额阴影框label视图样式
+    countOrAmountShadowLabelViewStyle: {
+        marginLeft: ScreenUtil.scaleSize(48)
+    },
+    // 累计张数或金额阴影框text样式
+    countOrAmountShadowTextStyle: {
+        fontSize: ScreenUtil.setSpText(9),
+        color: 'white'
+    },
+    flatListStyle: {
+        backgroundColor: '#F3F3F3'
+    },
+    multiSelectedStyle: {
+        backgroundColor: '#FFFFFF'
+    },
+    blurViewStyle: {
+        flex: 1, backgroundColor: '#FFFFFF'
+    },
+    statusLabelViewStyle: {
+        flex: 1,
+        position: 'absolute',
+        zIndex: -30,
+        top: Platform.OS === 'ios' ? ScreenUtil.scaleSize((Util.isIphoneX() ? 128 : 128)) : ScreenUtil.scaleSize(92),
+        left: 0,
+        right: 0,
+        marginBottom: ScreenUtil.scaleSize(20)
     }
 });

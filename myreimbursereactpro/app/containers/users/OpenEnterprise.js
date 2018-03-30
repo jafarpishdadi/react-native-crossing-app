@@ -27,6 +27,7 @@ import Util from '../../utils/Util';
 import Dialog from '../../containers/common/Dialog';
 import Store from 'react-native-simple-store';
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 class OpenEnterprise extends Component {
     static navigationOptions = ({navigation}) => ({
@@ -125,95 +126,97 @@ class OpenEnterprise extends Component {
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         return(
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
 
-                    <Header
-                        titleText={Message.OPEN_ENTERPRISE}
-                        thisComponent={this}
-                        showBackIcon={this.props.state.whereComeFrom == 'Login'? true:false}
-                        backClick={this.onBack}
-                    />
+                        <Header
+                            titleText={Message.OPEN_ENTERPRISE}
+                            thisComponent={this}
+                            showBackIcon={this.props.state.whereComeFrom == 'Login'? true:false}
+                            backClick={this.onBack}
+                        />
 
-                    <Dialog
-                        content={Message.OPEN_ENTERPRISE_CHECK_MESSAGE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog1}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal1}
-                        alertBtnClick={this._closeModal1}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.INPUT_PERSONAL_NAME}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog2}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal2}
-                        alertBtnClick={this._closeModal2}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.INPUT_ENTERPRISE_NAME}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog3}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal3}
-                        alertBtnClick={this._closeModal3}
-                        thisComponent={this}
-                    />
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.ENTERPRISE_NAME}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.INPUT_ENTERPRISE_NAME}
-                                maxLength={50}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="phone"
-                                selectionColor="#FFAA00"
-                                value={this.props.state.openEnterpriseName}
-                                onChangeText={(text) => {this.props.changeState({openEnterpriseName: text})}}
-                                returnKeyType={'done'}/>
+                        <Dialog
+                            content={Message.OPEN_ENTERPRISE_CHECK_MESSAGE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog1}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal1}
+                            alertBtnClick={this._closeModal1}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.INPUT_PERSONAL_NAME}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog2}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal2}
+                            alertBtnClick={this._closeModal2}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.INPUT_ENTERPRISE_NAME}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog3}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal3}
+                            alertBtnClick={this._closeModal3}
+                            thisComponent={this}
+                        />
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.ENTERPRISE_NAME}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.INPUT_ENTERPRISE_NAME}
+                                    maxLength={50}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="phone"
+                                    selectionColor="#FFAA00"
+                                    value={this.props.state.openEnterpriseName}
+                                    onChangeText={(text) => {this.props.changeState({openEnterpriseName: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.PERSONAL_NAME}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.INPUT_PERSONAL_NAME}
+                                    maxLength={15}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="code"
+                                    selectionColor="#FFAA00"
+                                    value={this.props.state.openEnterprisePerson}
+                                    onChangeText={(text) => {this.props.changeState({openEnterprisePerson: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.PERSONAL_NAME}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.INPUT_PERSONAL_NAME}
-                                maxLength={15}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="code"
-                                selectionColor="#FFAA00"
-                                value={this.props.state.openEnterprisePerson}
-                                onChangeText={(text) => {this.props.changeState({openEnterprisePerson: text})}}
-                                returnKeyType={'done'}/>
-                        </View>
-                        <View style={CustomStyles.separatorLine}/>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const dismissKeyboard = require('dismissKeyboard');
+                                dismissKeyboard();
+                                this.checkData();
+                            }}>
+                            <Image source={require('../../img/register/open_enterprise_btn.png')}
+                                   style={{
+                                       height: ScreenUtil.scaleSize(75),
+                                       width: ScreenUtil.scaleSize(550),
+                                       resizeMode: 'stretch',
+                                       alignSelf: 'center',
+                                       marginTop: ScreenUtil.scaleSize(180),
+                                   }}/>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => {
-                            const dismissKeyboard = require('dismissKeyboard');
-                            dismissKeyboard();
-                            this.checkData();
-                        }}>
-                        <Image source={require('../../img/register/open_enterprise_btn.png')}
-                               style={{
-                                   height: ScreenUtil.scaleSize(75),
-                                   width: ScreenUtil.scaleSize(550),
-                                   resizeMode: 'stretch',
-                                   alignSelf: 'center',
-                                   marginTop: ScreenUtil.scaleSize(180),
-                               }}/>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         )
     }
 }

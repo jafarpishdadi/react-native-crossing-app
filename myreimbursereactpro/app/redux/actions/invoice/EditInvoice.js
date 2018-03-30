@@ -1,24 +1,15 @@
-import * as types from '../../../constant/ActionTypes';
-import HttpUtil from '../../../network/HttpUtil';
-import API from '../../../utils/API';
-import Util from '../../../utils/Util';
-import {back} from '../../actions/navigator/Navigator';
-import Message from '../../../constant/Message';
-import {
-    loadInvoiceListDataWithoutReimbursement as withoutReimbursement,
-    loadInvoiceListDataWithinReimbursement,
-    loadInvoiceListDataDoneReimbursement,
-    changeState as invoiceChangeState,
-    doInitialise,
-    loadInvoiceListDataReimbursement
-} from '../../actions/invoice/Invoice';
+import * as types from "../../../constant/ActionTypes";
+import HttpUtil from "../../../network/HttpUtil";
+import API from "../../../utils/API";
+import Util from "../../../utils/Util";
+import {back} from "../../actions/navigator/Navigator";
+import Message from "../../../constant/Message";
+import {changeState as invoiceChangeState, loadInvoiceListDataReimbursement} from "../../actions/invoice/Invoice";
 import {
     loadInvoiceListDataWithoutReimbursement,
     changeState as addInvoiceChangeState
 } from "../../actions/invoice/AddInvoice";
-import {loadData as loadInvoiceDetailData} from '../../actions/invoice/InvoiceDetails';
-
-import {loadInvoiceDelete} from '../../actions/invoice/Invoice';
+import {loadData as loadInvoiceDetailData} from "../../actions/invoice/InvoiceDetails";
 
 export const initData = () => {
     return {
@@ -81,8 +72,8 @@ export const loadInvoiceDetail = (uuid) => {
                     if (ret.data.detailList != null && ret.data.detailList.length > 0) {
                         goodsName = ret.data.detailList[0].goodsName + (ret.data.detailList.length > 1 ? '等' : '');
                     }
-                    invoiceAmount = (parseFloat(ret.data.invoiceAmount) == 'NaN') || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2);
-                    totalAmount = (parseFloat(ret.data.totalAmount) == 'NaN') || ret.data.totalAmount == 0 ? '' : parseFloat(ret.data.totalAmount).toFixed(2);
+                    invoiceAmount = isNaN(parseFloat(ret.data.invoiceAmount)) || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2);
+                    totalAmount = isNaN(parseFloat(ret.data.totalAmount)) || ret.data.totalAmount == 0 ? '' : parseFloat(ret.data.totalAmount).toFixed(2);
                     dispatch(changeState({
                         invoiceTypeCode: ret.data.invoiceTypeCode,
                         invoiceTypeName: Util.getInvoiceTypeName(ret.data.invoiceTypeCode),
@@ -91,7 +82,7 @@ export const loadInvoiceDetail = (uuid) => {
                         invoiceCode: ret.data.invoiceCode,
                         invoiceNo: ret.data.invoiceNo,
                         invoiceDate: ret.data.invoiceDate,
-                        verifyCode: ret.data.verifyCode,
+                        verifyCode: ret.data.verifyCode.length > 20 ? ret.data.verifyCode.substring(0, 20) : ret.data.verifyCode,
                         buyerName: ret.data.buyerName,
                         invoiceAmount: invoiceAmount,
                         totalAmount: totalAmount,
@@ -236,8 +227,8 @@ export const getCheckState = (uuid, callBack) => {
                     if (ret.data.detailList != null && ret.data.detailList.length > 0) {
                         goodsName = ret.data.detailList[0].goodsName + (ret.data.detailList.length > 1 ? '等' : '');
                     }
-                    invoiceAmount = (parseFloat(ret.data.invoiceAmount) == 'NaN') || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2);
-                    totalAmount = (parseFloat(ret.data.totalAmount) == 'NaN') || ret.data.totalAmount == 0 ? '' : parseFloat(ret.data.totalAmount).toFixed(2);
+                    invoiceAmount = isNaN(parseFloat(ret.data.invoiceAmount)) || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2);
+                    totalAmount = isNaN(parseFloat(ret.data.totalAmount)) || ret.data.totalAmount == 0 ? '' : parseFloat(ret.data.totalAmount).toFixed(2);
                     dispatch(changeState({
                         invoiceTypeCode: ret.data.invoiceTypeCode,
                         invoiceTypeName: Util.getInvoiceTypeName(ret.data.invoiceTypeCode),
@@ -246,7 +237,7 @@ export const getCheckState = (uuid, callBack) => {
                         invoiceCode: ret.data.invoiceCode,
                         invoiceNo: ret.data.invoiceNo,
                         invoiceDate: ret.data.invoiceDate,
-                        verifyCode: ret.data.verifyCode,
+                        verifyCode: ret.data.verifyCode.length > 20 ? ret.data.verifyCode.substring(0, 20) : ret.data.verifyCode,
                         buyerName: ret.data.buyerName,
                         invoiceAmount: invoiceAmount,
                         totalAmount: totalAmount,

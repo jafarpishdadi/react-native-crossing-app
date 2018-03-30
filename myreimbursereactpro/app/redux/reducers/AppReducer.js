@@ -7,6 +7,7 @@ const initialState = {
 	routeName: '',      //当前页面名字
 	isMain: true,       //是否在主页
 	backLock: false,    //锁定返回
+	currentTab: 'HomePage',     //当前tab
 }
 
 const appReducer = (state = initialState, action) => {

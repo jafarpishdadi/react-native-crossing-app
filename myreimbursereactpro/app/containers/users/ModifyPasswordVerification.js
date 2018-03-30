@@ -33,6 +33,7 @@ import Util from '../../utils/Util';
 import CommonLoading from '../../containers/common/CommonLoading';
 import Store from 'react-native-simple-store';
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 class ModifyPasswordVerification extends Component {
 
@@ -177,80 +178,82 @@ class ModifyPasswordVerification extends Component {
         const dismissKeyboard = require('dismissKeyboard');
 
         return (
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
 
-                    <Header
-                        titleText={Message.MODIFY_PASSWORD}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                    />
+                        <Header
+                            titleText={Message.MODIFY_PASSWORD}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                        />
 
-                    <CommonLoading isShow={this.props.state.isLoading}/>
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
-                           <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_INPUT_PHONE}
-                                maxLength={11}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="phone"
-                                selectionColor="#FFAA00"
-                                keyboardType="numeric"
-                                value={this.props.state.modifyPasswordPhone}
-                                editable={false}
-                                onChangeText={(text) => {
-                                    this.props.changeState({modifyPasswordPhone: text})
-                                }}
-                                returnKeyType={'done'}/>
+                        <CommonLoading isShow={this.props.state.isLoading}/>
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
+                               <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_INPUT_PHONE}
+                                    maxLength={11}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="phone"
+                                    selectionColor="#FFAA00"
+                                    keyboardType="numeric"
+                                    value={this.props.state.modifyPasswordPhone}
+                                    editable={false}
+                                    onChangeText={(text) => {
+                                        this.props.changeState({modifyPasswordPhone: text})
+                                    }}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
+                                    maxLength={6}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="code"
+                                    selectionColor="#FFAA00"
+                                    keyboardType="numeric"
+                                    value={this.props.state.modifyPasswordVerificationCode}
+                                    onChangeText={(text) => {
+                                        this.props.changeState({modifyPasswordVerificationCode: text})
+                                    }}
+                                    returnKeyType={'done'}/>
+                                <TouchableOpacity disabled={this.props.state.btnDisable} onPress={() => {
+                                    this.sendValidationCode();
+                                }}>
+                                    <View style={styles.codeView}>
+                                        <Text style={[styles.sendExTxt]}>{this.props.state.text}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
-                                maxLength={6}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="code"
-                                selectionColor="#FFAA00"
-                                keyboardType="numeric"
-                                value={this.props.state.modifyPasswordVerificationCode}
-                                onChangeText={(text) => {
-                                    this.props.changeState({modifyPasswordVerificationCode: text})
-                                }}
-                                returnKeyType={'done'}/>
-                            <TouchableOpacity disabled={this.props.state.btnDisable} onPress={() => {
-                                this.sendValidationCode();
+                        <TouchableOpacity
+                            style={{
+                                marginTop: ScreenUtil.scaleSize(180),
+                            }}
+                            onPress={() => {
+                                dismissKeyboard();
+                                this.checkData()
                             }}>
-                                <View style={styles.codeView}>
-                                    <Text style={[styles.sendExTxt]}>{this.props.state.text}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={CustomStyles.separatorLine}/>
+                            <Image source={require('../../img/common/next.png')}
+                                   style={{
+                                       height: ScreenUtil.scaleSize(75),
+                                       width: ScreenUtil.scaleSize(550),
+                                       resizeMode: 'stretch',
+                                       alignSelf: 'center',
+                                   }}/>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={{
-                            marginTop: ScreenUtil.scaleSize(180),
-                        }}
-                        onPress={() => {
-                            dismissKeyboard();
-                            this.checkData()
-                        }}>
-                        <Image source={require('../../img/common/next.png')}
-                               style={{
-                                   height: ScreenUtil.scaleSize(75),
-                                   width: ScreenUtil.scaleSize(550),
-                                   resizeMode: 'stretch',
-                                   alignSelf: 'center',
-                               }}/>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         )
     }
 }

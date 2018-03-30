@@ -12,6 +12,7 @@ import {loadData as reportData} from '../report/Report';
 import Util from "../../../utils/Util";
 import Message from "../../../constant/Message";
 import {NavigationActions} from 'react-navigation';
+import {changeState as changeAppState} from '../App';
 
 
 //跳转到登陆页面
@@ -124,16 +125,18 @@ export const navigateLoanOrderList = () => {
 }
 
 //跳转到请选择城市页面
-export const navigateSelectCity = () => {
+export const navigateSelectCity = (params) => {
     return {
-        type: types.NAVIGATE_SELECT_CITY
+        type: types.NAVIGATE_SELECT_CITY,
+        params: params
     }
 }
 
 //跳转到新建借款单页面
-export const navigateNewLoanOrder = () => {
+export const navigateNewLoanOrder = (params) => {
     return {
-        type: types.NAVIGATE_NEW_LOAN_ORDER
+        type: types.NAVIGATE_NEW_LOAN_ORDER,
+        params: params
     }
 }
 
@@ -184,8 +187,13 @@ export const resetNewReimbursement = (params) => {
 }
 
 export const backToInvoiceList = () => {
-    return {
-        type: types.RESET_INVOICE_LIST,
+    return (dispatch) => {
+        dispatch(changeAppState({
+            currentTab: 'Invoice',
+        }))
+        dispatch({
+            type: types.RESET_INVOICE_LIST,
+        })
     }
 }
 
@@ -211,8 +219,13 @@ export const navigateApplicationList = () => {
 }
 
 export const resetApplicationList = () => {
-    return {
-        type: types.RESET_APPLICATION_LIST,
+    return (dispatch, getState) => {
+        dispatch({
+            type: types.RESET_APPLICATION_LIST,
+            params: {
+                tab: getState().App.currentTab
+            }
+        })
     }
 }
 
@@ -352,6 +365,31 @@ export const navigateTravelApplyList = (params) => {
     }
 }
 
+
+//跳转出差申请单
+export const resetTravelApplyList = () => {
+    return (dispatch, getState) => {
+        dispatch({
+            type: types.RESET_TRAVEL_APPLY_LIST,
+            params: {
+                tab: getState().App.currentTab
+            }
+        })
+    }
+}
+
+//重置页面到借款单列表
+export const resetLoanList = () => {
+    return (dispatch, getState) => {
+        dispatch({
+            type: types.RESET_LOAN_LIST,
+            params: {
+                tab: getState().App.currentTab
+            }
+        })
+    }
+}
+
 /**
  * 根据扫一扫或ocr识别的返回结果判断跳转发票编辑页面还是新建发票页面
  * @param ret 归集返回的数据
@@ -368,96 +406,243 @@ export const navigateToNewOrEditInvoicePage = (ret,isFromScan,params) => {
                 if (ret.data.checkState == '1') {
 
                     //如果是点击继续归集跳转到当前页面，先销毁，再跳转
-                    if(currentRouteName == 'InvoiceDetails'){
+                    if(currentRouteName == 'InvoiceDetails' || isFromScan){
                         // dispatch(back());
-                        dispatch(NavigationActions.reset({
-                            index: 1,
-                            actions:[
-                                NavigationActions.navigate({
-                                    routeName: 'MainScreen',
-                                    params: {
-                                        tab: 'Invoice'
-                                    }
-                                }),
-                                NavigationActions.navigate({
-                                    routeName: 'InvoiceDetails',
-                                    params: {
-                                        invoiceTypeCode: ret.data.invoiceTypeCode,
-                                        uuid: ret.data.uuid,
-                                        showCollectBtn: true,       //是否显示立即归集按钮
-                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                        isFromScan:isFromScan,      //是否来自于扫一扫页面
-                                        showReimbursementBtn: true, //是否显示立即报销按钮
-                                    }})
-                            ]
+                        if (params && params.fromNew) {
+                            dispatch(NavigationActions.reset({
+                                index: 2,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'NewReimbursement',
+                                        params: {
+                                            noInit: true,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'InvoiceDetails',
+                                        params: {
+                                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                                            uuid: ret.data.uuid,
+                                            showCollectBtn: true,       //是否显示立即归集按钮
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                            showReimbursementBtn: true, //是否显示立即报销按钮
+                                        }})
+                                ]
+                            }));
+                        } else {
+                            dispatch(NavigationActions.reset({
+                                index: 1,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'InvoiceDetails',
+                                        params: {
+                                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                                            uuid: ret.data.uuid,
+                                            showCollectBtn: true,       //是否显示立即归集按钮
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                            showReimbursementBtn: true, //是否显示立即报销按钮
+                                        }})
+                                ]
+                            }));
+                        }
+                    } else {
+                        //跳转发票详情页面
+                        dispatch(navigateInvoiceDetails({
+                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                            uuid: ret.data.uuid,
+                            showCollectBtn: true,       //是否显示立即归集按钮
+                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                            showReimbursementBtn: true, //是否显示立即报销按钮
                         }));
                     }
-                    //跳转发票详情页面
-                    dispatch(navigateInvoiceDetails({
-                        invoiceTypeCode: ret.data.invoiceTypeCode,
-                        uuid: ret.data.uuid,
-                        showCollectBtn: true,       //是否显示立即归集按钮
-                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                        isFromScan:isFromScan,      //是否来自于扫一扫页面
-                        showReimbursementBtn: true, //是否显示立即报销按钮
-                    }));
                     dispatch(loadInvoiceListDataReimbursement('N'));
                 } else if (ret.data.invoiceTypeCode != '00') {
-                    if(currentRouteName == 'EditInvoice'){
+                    if(currentRouteName == 'EditInvoice' || isFromScan){
                         // dispatch(back());
-                        dispatch(NavigationActions.reset({
-                            index: 1,
-                            actions:[
-                                NavigationActions.navigate({
-                                    routeName: 'MainScreen',
-                                    params: {
-                                        tab: 'Invoice'
-                                    }
-                                }),
-                                NavigationActions.navigate({
-                                    routeName: 'EditInvoice',
-                                    params: {
-                                        invoiceTypeCode: ret.data.invoiceTypeCode,
-                                        uuid: ret.data.uuid,
-                                        returnDelete: true,
-                                        hideSave: true,
-                                        showCollectBtn: true,       //是否显示立即归集按钮
-                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                        isFromScan:isFromScan,      //是否来自于扫一扫页面
-                                        showReimbursementBtn: true, //是否显示立即报销按钮
-                                    }})
-                            ]
+                        if (params && params.fromNew) {
+                            dispatch(NavigationActions.reset({
+                                index: 2,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'NewReimbursement',
+                                        params: {
+                                            noInit: true,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'EditInvoice',
+                                        params: {
+                                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                                            uuid: ret.data.uuid,
+                                            returnDelete: true,
+                                            hideSave: true,
+                                            showCollectBtn: true,       //是否显示立即归集按钮
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                            showReimbursementBtn: true, //是否显示立即报销按钮
+                                        }})
+                                ]
+                            }));
+                        } else {
+                            dispatch(NavigationActions.reset({
+                                index: 1,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'EditInvoice',
+                                        params: {
+                                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                                            uuid: ret.data.uuid,
+                                            returnDelete: true,
+                                            hideSave: true,
+                                            showCollectBtn: true,       //是否显示立即归集按钮
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                            showReimbursementBtn: true, //是否显示立即报销按钮
+                                        }})
+                                ]
+                            }));
+                        }
+                    } else {
+                        //跳转编辑发票页面
+                        dispatch(navigateEditInvoice({
+                            invoiceTypeCode: ret.data.invoiceTypeCode,
+                            uuid: ret.data.uuid,
+                            returnDelete: true,
+                            hideSave: true,
+                            showCollectBtn: true,       //是否显示立即归集按钮
+                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                            showReimbursementBtn: true, //是否显示立即报销按钮
                         }));
                     }
-                    //跳转编辑发票页面
-                    dispatch(navigateEditInvoice({
-                        invoiceTypeCode: ret.data.invoiceTypeCode,
-                        uuid: ret.data.uuid,
-                        returnDelete: true,
-                        hideSave: true,
-                        showCollectBtn: true,       //是否显示立即归集按钮
-                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                        isFromScan:isFromScan,      //是否来自于扫一扫页面
-                        showReimbursementBtn: true, //是否显示立即报销按钮
-                    }));
                 } else {
                     if(!isFromScan && Util.checkIsEmptyString(ret.data.uuid)){
                         Util.showToast(Message.UPLOAD_FAIL);
                         return;
                     }
-                    if(currentRouteName == 'NewInvoice'){
+                    if(currentRouteName == 'NewInvoice' || isFromScan){
                         // dispatch(back());
+                        if (params && params.fromNew) {
+                            dispatch(NavigationActions.reset({
+                                index: 2,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'NewReimbursement',
+                                        params: {
+                                            noInit: true,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'NewInvoice',
+                                        params: {
+                                            invoiceData: ret.data,
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        }})
+                                ]
+                            }));
+                        } else {
+                            dispatch(NavigationActions.reset({
+                                index: 1,
+                                actions:[
+                                    NavigationActions.navigate({
+                                        routeName: 'MainScreen',
+                                        params: {
+                                            tab: getState().App.currentTab,
+                                        }
+                                    }),
+                                    NavigationActions.navigate({
+                                        routeName: 'NewInvoice',
+                                        params: {
+                                            invoiceData: ret.data,
+                                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        }})
+                                ]
+                            }));
+                        }
+                    } else {
+                        //跳转新增发票选择发票类型，输入发票要素页面
+                        dispatch(navigateNewInvoice({
+                            invoiceData: ret.data,
+                            fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                            expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                        }));
+                    }
+                }
+            } else {
+                if(!isFromScan){
+                    Util.showToast(Message.UPLOAD_FAIL);
+                    return;
+                }
+                if(currentRouteName == 'NewInvoice' || isFromScan){
+                    // dispatch(back());
+                    if (params && params.fromNew) {
+                        dispatch(NavigationActions.reset({
+                            index: 2,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewReimbursement',
+                                    params: {
+                                        noInit: true,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewInvoice',
+                                    params: {
+                                        invoiceData: ret.data,
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                    }})
+                            ]
+                        }));
+                    } else {
                         dispatch(NavigationActions.reset({
                             index: 1,
                             actions:[
                                 NavigationActions.navigate({
                                     routeName: 'MainScreen',
                                     params: {
-                                        tab: 'Invoice'
+                                        tab: getState().App.currentTab,
                                     }
                                 }),
                                 NavigationActions.navigate({
@@ -470,6 +655,7 @@ export const navigateToNewOrEditInvoicePage = (ret,isFromScan,params) => {
                             ]
                         }));
                     }
+                } else {
                     //跳转新增发票选择发票类型，输入发票要素页面
                     dispatch(navigateNewInvoice({
                         invoiceData: ret.data,
@@ -477,113 +663,139 @@ export const navigateToNewOrEditInvoicePage = (ret,isFromScan,params) => {
                         expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
                     }));
                 }
-            } else {
-                if(!isFromScan){
-                    Util.showToast(Message.UPLOAD_FAIL);
-                    return;
-                }
-                if(currentRouteName == 'NewInvoice'){
-                    // dispatch(back());
-                    dispatch(NavigationActions.reset({
-                        index: 1,
-                        actions:[
-                            NavigationActions.navigate({
-                                routeName: 'MainScreen',
-                                params: {
-                                    tab: 'Invoice'
-                                }
-                            }),
-                            NavigationActions.navigate({
-                                routeName: 'NewInvoice',
-                                params: {
-                                    invoiceData: ret.data,
-                                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                }})
-                        ]
-                    }));
-                }
-                //跳转新增发票选择发票类型，输入发票要素页面
-                dispatch(navigateNewInvoice({
-                    invoiceData: ret.data,
-                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                }));
             }
         } else {
             if (ret.message == '9993') {
-                if(currentRouteName == 'InvoiceDetails'){
+                if(currentRouteName == 'InvoiceDetails' || isFromScan){
                     // dispatch(back());
-                    dispatch(NavigationActions.reset({
-                        index: 1,
-                        actions:[
-                            NavigationActions.navigate({
-                                routeName: 'MainScreen',
-                                params: {
-                                    tab: 'Invoice'
-                                }
-                            }),
-                            NavigationActions.navigate({
-                                routeName: 'InvoiceDetails',
-                                params: {
-                                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                                    uuid: ret.data.uuid,
-                                    showCollectBtn: true,       //是否显示立即归集按钮
-                                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                                    showReimbursementBtn: true, //是否显示立即报销按钮
-                                }})
-                        ]
+                    if (params && params.fromNew) {
+                        dispatch(NavigationActions.reset({
+                            index: 2,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewReimbursement',
+                                    params: {
+                                        noInit: true,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    } else {
+                        dispatch(NavigationActions.reset({
+                            index: 1,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    }
+                } else {
+                    //跳转发票详情页面
+                    dispatch(navigateInvoiceDetails({
+                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                        uuid: ret.data.uuid,
+                        showCollectBtn: true,       //是否显示立即归集按钮
+                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                        showReimbursementBtn: true, //是否显示立即报销按钮
                     }));
                 }
-                //跳转发票详情页面
-                dispatch(navigateInvoiceDetails({
-                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                    uuid: ret.data.uuid,
-                    showCollectBtn: true,       //是否显示立即归集按钮
-                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                    showReimbursementBtn: true, //是否显示立即报销按钮
-                }));
                 Util.showToast(Message.SCAN_QR_CODE_ALREADY_COLLECTED);
             } else if (ret.message == '9995') {
-                if(currentRouteName == 'InvoiceDetails'){
+                if(currentRouteName == 'InvoiceDetails' || isFromScan){
                     // dispatch(back());
-                    dispatch(NavigationActions.reset({
-                        index: 1,
-                        actions:[
-                            NavigationActions.navigate({
-                                routeName: 'MainScreen',
-                                params: {
-                                    tab: 'Invoice'
-                                }
-                            }),
-                            NavigationActions.navigate({
-                                routeName: 'InvoiceDetails',
-                                params: {
-                                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                                    uuid: ret.data.uuid,
-                                    showCollectBtn: true,       //是否显示立即归集按钮
-                                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                                    showReimbursementBtn: true, //是否显示立即报销按钮
-                                }})
-                        ]
+                    if (params && params.fromNew) {
+                        dispatch(NavigationActions.reset({
+                            index: 2,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewReimbursement',
+                                    params: {
+                                        noInit: true,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    } else {
+                        dispatch(NavigationActions.reset({
+                            index: 1,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    }
+                } else {
+                    //跳转发票详情页面
+                    dispatch(navigateInvoiceDetails({
+                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                        uuid: ret.data.uuid,
+                        showCollectBtn: true,       //是否显示立即归集按钮
+                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                        showReimbursementBtn: true, //是否显示立即报销按钮
                     }));
                 }
-                //跳转发票详情页面
-                dispatch(navigateInvoiceDetails({
-                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                    uuid: ret.data.uuid,
-                    showCollectBtn: true,       //是否显示立即归集按钮
-                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                    showReimbursementBtn: true, //是否显示立即报销按钮
-                }));
                 Util.showToast(Message.SCAN_QR_CODE_ALREADY_REIMBURSED);
                 dispatch(loadInvoiceListDataDoneReimbursement({
                     invoiceTime:'',
@@ -595,41 +807,70 @@ export const navigateToNewOrEditInvoicePage = (ret,isFromScan,params) => {
                 }));
             }else if (ret.message == '9988') {
 
-                if(currentRouteName == 'InvoiceDetails'){
+                if(currentRouteName == 'InvoiceDetails' || isFromScan){
                     // dispatch(back());
-                    dispatch(NavigationActions.reset({
-                        index: 1,
-                        actions:[
-                            NavigationActions.navigate({
-                                routeName: 'MainScreen',
-                                params: {
-                                    tab: 'Invoice'
-                                }
-                            }),
-                            NavigationActions.navigate({
-                                routeName: 'InvoiceDetails',
-                                params: {
-                                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                                    uuid: ret.data.uuid,
-                                    showCollectBtn: true,       //是否显示立即归集按钮
-                                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                                    showReimbursementBtn: true, //是否显示立即报销按钮
-                                }})
-                        ]
+                    if (params && params.fromNew) {
+                        dispatch(NavigationActions.reset({
+                            index: 2,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewReimbursement',
+                                    params: {
+                                        noInit: true,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    } else {
+                        dispatch(NavigationActions.reset({
+                            index: 1,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'InvoiceDetails',
+                                    params: {
+                                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                                        uuid: ret.data.uuid,
+                                        showCollectBtn: true,       //是否显示立即归集按钮
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                        showReimbursementBtn: true, //是否显示立即报销按钮
+                                    }})
+                            ]
+                        }));
+                    }
+                } else {
+                    //跳转发票详情页面
+                    dispatch(navigateInvoiceDetails({
+                        invoiceTypeCode: ret.data.invoiceTypeCode,
+                        uuid: ret.data.uuid,
+                        showCollectBtn: true,       //是否显示立即归集按钮
+                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                        showReimbursementBtn: true, //是否显示立即报销按钮
                     }));
                 }
-                //跳转发票详情页面
-                dispatch(navigateInvoiceDetails({
-                    invoiceTypeCode: ret.data.invoiceTypeCode,
-                    uuid: ret.data.uuid,
-                    showCollectBtn: true,       //是否显示立即归集按钮
-                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                    isFromScan:isFromScan,      //是否来自于扫一扫页面
-                    showReimbursementBtn: true, //是否显示立即报销按钮
-                }));
 
                 Util.showToast(Message.SCAN_QR_CODE_REIMBURSING);
 
@@ -646,33 +887,61 @@ export const navigateToNewOrEditInvoicePage = (ret,isFromScan,params) => {
                     Util.showToast(Message.UPLOAD_FAIL);
                     return;
                 }
-                if(currentRouteName == 'NewInvoice'){
+                if(currentRouteName == 'NewInvoice' || isFromScan){
                     // dispatch(back());
-                    dispatch(NavigationActions.reset({
-                        index: 1,
-                        actions:[
-                            NavigationActions.navigate({
-                                routeName: 'MainScreen',
-                                params: {
-                                    tab: 'Invoice'
-                                }
-                            }),
-                            NavigationActions.navigate({
-                                routeName: 'NewInvoice',
-                                params: {
-                                    invoiceData: ret.data,
-                                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                                }})
-                        ]
+                    if (params && params.fromNew) {
+                        dispatch(NavigationActions.reset({
+                            index: 2,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewReimbursement',
+                                    params: {
+                                        noInit: true,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewInvoice',
+                                    params: {
+                                        invoiceData: ret.data,
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                    }})
+                            ]
+                        }));
+                    } else {
+                        dispatch(NavigationActions.reset({
+                            index: 1,
+                            actions:[
+                                NavigationActions.navigate({
+                                    routeName: 'MainScreen',
+                                    params: {
+                                        tab: getState().App.currentTab,
+                                    }
+                                }),
+                                NavigationActions.navigate({
+                                    routeName: 'NewInvoice',
+                                    params: {
+                                        invoiceData: ret.data,
+                                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
+                                    }})
+                            ]
+                        }));
+                    }
+                } else {
+                    //跳转新增发票选择发票类型，输入发票要素页面
+                    dispatch(navigateNewInvoice({
+                        invoiceData: ret.data,
+                        fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
+                        expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
                     }));
                 }
-                //跳转新增发票选择发票类型，输入发票要素页面
-                dispatch(navigateNewInvoice({
-                    invoiceData: ret.data,
-                    fromNew:params ? params.fromNew : false,        //是否是来自新建报销单页面
-                    expenseId:params ? params.expenseId : '',        //是否是来自新建报销单页面
-                }));
             }
         }
     }

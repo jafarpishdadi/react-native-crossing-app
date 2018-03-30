@@ -54,6 +54,7 @@ import {CustomStyles} from "../../css/CustomStyles";
 import {CalendarList, LocaleConfig} from "react-native-calendars";
 
 const Permissions = require('react-native-permissions');
+import SafeAreaView from "react-native-safe-area-view";
 var RNBridgeModule = NativeModules.RNBridgeModule;
 
 class EditInvoice extends Component {
@@ -134,7 +135,7 @@ class EditInvoice extends Component {
      */
     onBack(component) {
         component.cancelKeyboardEvent();
-        if(component.props.state.dataSaved){
+        if (component.props.state.dataSaved) {
             setTimeout(
                 () => {
                     component.props.changeScanQrCodeState({readQrCodeEnable: true});
@@ -142,7 +143,7 @@ class EditInvoice extends Component {
                 20
             );
             component.props.back();
-        }else{
+        } else {
             component.props.changeState({
                 saveModalVisible: true,
             });
@@ -185,7 +186,7 @@ class EditInvoice extends Component {
      */
     _checkData() {
         if (Util.contains(['01', '02', '04', '10', '11'], this.props.state.invoiceTypeCode)) {
-            if(!Util.checkIsEmptyString(this.props.state.totalAmount)&&this.props.state.totalAmount == 0){
+            if (!Util.checkIsEmptyString(this.props.state.totalAmount) && this.props.state.totalAmount == 0) {
                 Util.showToast(Message.NEW_INVOICE_SJHJ_PLACEHOLDER_MORE_THAN_ZERO);
                 return false;
             }
@@ -226,7 +227,7 @@ class EditInvoice extends Component {
                     Util.showToast(Message.NEW_INVOICE_BHSJ_PLACEHOLDER);
                     return false;
                 }
-                if (!Util.checkIsEmptyString(this.props.state.invoiceAmount) &&this.props.state.invoiceAmount == 0) {
+                if (!Util.checkIsEmptyString(this.props.state.invoiceAmount) && this.props.state.invoiceAmount == 0) {
                     Util.showToast(Message.NEW_INVOICE_BHSJ_PLACEHOLDER_MORE_THAN_ZERO);
                     return false;
                 }
@@ -240,7 +241,7 @@ class EditInvoice extends Component {
                     Util.showToast(Message.NEW_INVOICE_INVALID_MONEY);
                     return false;
                 }
-            }else{
+            } else {
                 if (Util.checkIsEmptyString(this.props.state.verifyCode)) {
                     Util.showToast(Message.NEW_INVOICE_VALIDATION_CODE_PLACEHOLDER);
                     return false;
@@ -264,7 +265,7 @@ class EditInvoice extends Component {
                 return false;
             }
 
-            var vYear = parseInt(this.props.state.invoiceDate.substr(0,4));
+            var vYear = parseInt(this.props.state.invoiceDate.substr(0, 4));
             if (vYear < Util.YEAR_START || vYear >= Util.YEAR_END) {
                 Util.showToast(Message.NEW_INVOICE_OPEN_DATE_INVALID);
                 return false;
@@ -277,7 +278,7 @@ class EditInvoice extends Component {
                 Util.showToast(Message.NEW_INVOICE_OPEN_DATE_PLACEHOLDER);
                 return false;
             }
-            var vYear = parseInt(this.props.state.invoiceDate.substr(0,4));
+            var vYear = parseInt(this.props.state.invoiceDate.substr(0, 4));
             if (vYear < Util.YEAR_START || vYear >= Util.YEAR_END) {
                 Util.showToast(Message.NEW_INVOICE_OPEN_DATE_INVALID);
                 return false;
@@ -311,7 +312,7 @@ class EditInvoice extends Component {
                 Util.showToast(Message.NEW_INVOICE_DATE_PLACEHOLDER);
                 return false;
             }
-            var vYear = parseInt(this.props.state.invoiceDate.substr(0,4));
+            var vYear = parseInt(this.props.state.invoiceDate.substr(0, 4));
             if (vYear < Util.YEAR_START || vYear >= Util.YEAR_END) {
                 Util.showToast(Message.NEW_INVOICE_OPEN_DATE_INVALID);
                 return false;
@@ -335,15 +336,11 @@ class EditInvoice extends Component {
                 Util.showToast(Message.NEW_INVOICE_INVALID_MONEY);
                 return false;
             }
-            // if (Util.checkIsEmptyString(this.props.state.invoiceCount)) {
-            //     Util.showToast(Message.NEW_INVOICE_ATTACHMENT_COUNT_PLACEHOLDER);
-            //     return false;
-            // }
-            if (Util.checkIsEmptyString(this.props.state.invoiceCount)){
+            if (Util.checkIsEmptyString(this.props.state.invoiceCount)) {
                 Util.showToast(Message.NEW_INVOICE_INVALID_ATTACHMENT_NUMBER_TO_INPUT);
                 return false;
             }
-            if (this.props.state.invoiceCount ==0){
+            if (this.props.state.invoiceCount == 0) {
                 Util.showToast(Message.NEW_INVOICE_INVALID_ATTACHMENT_NUMBER);
                 return false;
             }
@@ -356,7 +353,7 @@ class EditInvoice extends Component {
      * @param returnCallBack bool  是否需要返回进行回调，继续归集和立即报销需要回调
      * @param callBack  回调方法
      */
-    preSaveAction(returnCallBack,callBack) {
+    preSaveAction(returnCallBack, callBack) {
         this.cancelKeyboardEvent();
         if (this._checkData()) {
             if (this.props.state.isFromNewReimbursement) {
@@ -381,7 +378,7 @@ class EditInvoice extends Component {
                 this.props.editToReimbursementSelectedInvoiceList(this.props.navigation.state.params.expenseId, selectInvoiceList);
                 this.props.changeState({isFromNewReimbursement: false});
             }
-            this.saveAction(returnCallBack,callBack);
+            this.saveAction(returnCallBack, callBack);
         }
     }
 
@@ -390,7 +387,7 @@ class EditInvoice extends Component {
      * @param returnCallBack bool  是否需要返回进行回调，继续归集和立即报销需要回调
      * @param callBack  回调方法
      */
-    saveAction(returnCallBack,callBack) {
+    saveAction(returnCallBack, callBack) {
         var requestData = {
             uuid: this.props.state.uuid,
             invoiceTypeCode: this.props.state.invoiceTypeCode,
@@ -410,54 +407,7 @@ class EditInvoice extends Component {
             invoiceCount: this.props.state.invoiceCount == '' ? '1' : this.props.state.invoiceCount,
             isCheck: 'Y'
         };
-        this.props.saveInvoice(requestData,returnCallBack,callBack);
-    }
-
-    /**
-     * 日期选择器
-     */
-    createDatePicker() {
-
-        var year;
-        var month;
-        var day;
-        if (!Util.checkIsEmptyString(this.props.state.invoiceDate)) {
-            year = this.props.state.invoiceDate.substr(0, 4) + '年';
-            month = parseInt(this.props.state.invoiceDate.substr(4, 2)) + '月';
-            day = parseInt(this.props.state.invoiceDate.substr(6, 2)) + '日';
-        } else {
-            var d = new Date();
-            year = d.getFullYear() + Message.YEAR;
-            month = (d.getMonth() + 1) + Message.MONTH;
-            day = d.getDate() + Message.DAY;
-        }
-        const dismissKeyboard = require('dismissKeyboard');
-        dismissKeyboard();
-        Picker.init({
-            pickerData: Util.createDateData(),
-            selectedValue: [year, month, day],
-            pickerConfirmBtnText: Message.COMPLETE,
-            pickerCancelBtnText: Message.CANCEL,
-            pickerConfirmBtnColor: [255, 170, 0, 1],
-            pickerCancelBtnColor: [255, 170, 0, 1],
-            pickerToolBarBg: [255, 255, 255, 1],
-            pickerToolBarFontSize: 15,
-            pickerBg: [255, 255, 255, 1],
-            pickerFontSize: 15,
-            pickerFontColor: [102, 102, 102, 1],
-            pickerTitleText: '',
-            pickerFontSize: 17,
-            onPickerConfirm: (pickedValue, pickedIndex) => {
-                var selectedDateStr = pickedValue[0] + (pickedValue[1].length > 2 ? pickedValue[1] : ('0' + pickedValue[1])) + (pickedValue[2].length > 2 ? pickedValue[2] : ('0' + pickedValue[2]));
-                this.props.changeState({invoiceDate: selectedDateStr.replace("年", "").replace("月", "").replace("日", ""),dataSaved: false});
-                this.props.changeState({
-                    backDialogShow: false
-                });
-            },
-            onPickerCancel: () => {
-                this.props.changeState({backDialogShow: false});
-            },
-        });
+        this.props.saveInvoice(requestData, returnCallBack, callBack);
     }
 
     /**
@@ -475,6 +425,9 @@ class EditInvoice extends Component {
         targetInvoiceItem.invoiceDateStr = Util.formatDate(invoiceItem.invoiceDate);
         targetInvoiceItem.invoiceAmount = invoiceItem.totalAmount;
         targetInvoiceItem.imageAddress = '';
+        targetInvoiceItem.checkStatusCode = invoiceItem.checkState;
+        targetInvoiceItem.invoiceTypeName = Util.getInvoiceTypeName(invoiceItem.invoiceTypeCode);
+        targetInvoiceItem.invoiceTaxamount = invoiceItem.taxAmount;
         selectInvoiceList.push(targetInvoiceItem);
         return selectInvoiceList;
     }
@@ -488,12 +441,12 @@ class EditInvoice extends Component {
                 return (
                     <View style={styles.bottom}>
                         <TouchableOpacity onPress={()=> {
-                            if(this.props.state.dataSaved){
+                            if (this.props.state.dataSaved) {
                                 this.popDialog();
                                 return;
                             }
                             var thiz = this;
-                            this.preSaveAction(true, function (data,goodsName) {
+                            this.preSaveAction(true, function (data, goodsName) {
                                 thiz.popDialog();
                             })
                         }}>
@@ -508,12 +461,12 @@ class EditInvoice extends Component {
                 return (
                     <View style={styles.bottom}>
                         <TouchableOpacity onPress={()=> {
-                            if(this.props.state.dataSaved){
+                            if (this.props.state.dataSaved) {
                                 this.popDialog();
                                 return;
                             }
                             var thiz = this;
-                            this.preSaveAction(true, function (data,goodsName) {
+                            this.preSaveAction(true, function (data, goodsName) {
                                 thiz.popDialog();
                             })
                         }}>
@@ -521,7 +474,7 @@ class EditInvoice extends Component {
                         </TouchableOpacity>
                     </View>
                 )
-            }else if(this.props.state.showReimbursementBtn){
+            } else if (this.props.state.showReimbursementBtn) {
                 return (
                     <View style={styles.bottom}>
                         <TouchableOpacity onPress={()=> this.reimbursementNow()}>
@@ -671,7 +624,14 @@ class EditInvoice extends Component {
                 }
 
                 var selectedList = this.getSelectedInvoiceListToNewReimbursement();
-                this.props.navigateNewReimbursement({applyTypeName: areaStr, selectedList: selectedList})
+                this.props.navigateNewReimbursement({
+                    applyTypeName: areaStr,
+                    selectedList: selectedList
+                })
+                this.props.changeState({backDialogShow: false});
+            },
+            onPickerCancel: data => {
+                this.props.changeState({backDialogShow: false});
             }
         });
     }
@@ -679,7 +639,7 @@ class EditInvoice extends Component {
     /**
      * 取消键盘
      */
-    cancelKeyboardEvent () {
+    cancelKeyboardEvent() {
         const dismissKeyboard = require('dismissKeyboard');
         dismissKeyboard();
     }
@@ -692,11 +652,12 @@ class EditInvoice extends Component {
 
     //输入失去焦点
     inputOnBlur(component) {
-        component.props.changeState({isFocused: false,
+        component.props.changeState({
+            isFocused: false,
             dataSaved: false,
             totalAmount: this.moneyFormat(this.props.state.totalAmount, 2),
             invoiceAmount: this.moneyFormat(this.props.state.invoiceAmount, 2),
-            invoiceCount:this.moneyFormat(this.props.state.invoiceCount,3)
+            invoiceCount: this.moneyFormat(this.props.state.invoiceCount, 3)
         });
     }
 
@@ -705,7 +666,7 @@ class EditInvoice extends Component {
      * @param value 输入的数字
      * @param flag  0表示totalAmount，1表示invoiceAmount
      */
-    renderMoneyFormat (value, flag) {
+    renderMoneyFormat(value, flag) {
         if (this.props.state.isFocused) {
 
             const arr = value.split('.');
@@ -716,8 +677,8 @@ class EditInvoice extends Component {
                 Util.showToast(Message.EDIT_INVOICE_AMOUNT_FORMAT_CHECK);
                 return;
             }
-            //整数最大12位
-            if (parseFloat(value) >= 1000000000000) {
+            //整数最大7位
+            if (parseFloat(value) >= 10000000) {
                 return;
             }
             //最多2位小数
@@ -743,7 +704,7 @@ class EditInvoice extends Component {
      * 渲染输入不含祱价时的输入限制
      * @param value 输入的数字
      */
-    renderMoneyFormat2 (value) {
+    renderMoneyFormat2(value) {
         if (this.props.state.isFocused) {
 
             const arr = value.split('.');
@@ -755,7 +716,7 @@ class EditInvoice extends Component {
                 return;
             }
             //整数最大12位
-            if (parseFloat(value) >= 1000000000000) {
+            if (parseFloat(value) >= 10000000) {
                 return;
             }
             //最多2位小数
@@ -774,30 +735,30 @@ class EditInvoice extends Component {
      * 金额保留2位小数
      * @returns {string}
      */
-    moneyFormat (money, flag) {
+    moneyFormat(money, flag) {
         if (Util.checkIsEmptyString(money)) {
             money = '';
         }
         var result = '';
         switch (flag) {
             case 1:
-                result = (parseFloat(this.props.state.totalAmount).toFixed(2) + '') == 'NaN' ? '' : parseFloat(this.props.state.totalAmount).toFixed(2) + '';
+                result = (parseFloat(this.props.state.totalAmount) + '') == 'NaN' ? '' : parseFloat(this.props.state.totalAmount).toFixed(2) + '';
                 return result;
             case 2:
-                result = ((parseFloat(money).toFixed(2)) == 'NaN') ? '':(parseFloat(money).toFixed(2) + '');
+                result = ((parseFloat(money) + '') == 'NaN') ? '' : (parseFloat(money).toFixed(2) + '');
                 return result;
             case 3:
-                result = ((parseFloat(money).toFixed(0) + '') == 'NaN') ? '':(parseFloat(money).toFixed(0) + '');
+                result = ((parseFloat(money) + '') == 'NaN') ? '' : (parseFloat(money).toFixed(0) + '');
                 return result;
 
             default:
         }
     }
 
-    invoiceDateFormat () {
+    invoiceDateFormat() {
         var result = this.props.state.invoiceDate;
-        var year = result.substring(0,4);
-        var month = result.substring(4,6);
+        var year = result.substring(0, 4);
+        var month = result.substring(4, 6);
         var day = result.substring(6);
         return year + '-' + month + '-' + day;
     }
@@ -806,9 +767,9 @@ class EditInvoice extends Component {
      * 渲染输入副附件张数的输入限制
      * @param value 输入的数字
      */
-    renderInvoiceCount (value) {
+    renderInvoiceCount(value) {
         if (this.props.state.isFocused) {
-            if(Util.checkIsEmptyString(value)){
+            if (Util.checkIsEmptyString(value)) {
                 this.props.changeState({
                     dataSaved: false,
                     invoiceCount: value
@@ -821,12 +782,16 @@ class EditInvoice extends Component {
                 return;
             }
             //判断是否包含小数点
-            if(value.indexOf('.') > -1){
-                Util.showToast(Message.NEW_RE_TOTAL_NUM_MAX_CHECK);
+            if (value.indexOf('.') > -1) {
+                Util.showToast(Message.NEW_INVOICE_INVALID_ATTACHMENT_NUMBER);
                 return;
             }
             //整数最大12位
             if (parseFloat(value) >= 1000) {
+                return;
+            }
+            if (value == 0) {
+                Util.showToast(Message.NEW_INVOICE_INVALID_ATTACHMENT_NUMBER);
                 return;
             }
             this.props.changeState({
@@ -845,9 +810,11 @@ class EditInvoice extends Component {
             <View>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_DATE}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_DATE}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TouchableOpacity style={styles.selectBtn} onPress={() => {
                             dismissKeyboard();
+                            Picker.hide();
                             this.props.changeState({isModalBoxOpen: true});
                         }}>
                             {
@@ -867,7 +834,8 @@ class EditInvoice extends Component {
                 <View style={CustomStyles.separatorLine}/>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_AMOUNT}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_AMOUNT}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TextInput
                             style={[styles.inputText, {flex: 1}]}
                             underlineColorAndroid="transparent"
@@ -878,8 +846,12 @@ class EditInvoice extends Component {
                                 this.renderMoneyFormat(text, 0);
                             }}
                             value={this.props.state.totalAmount + ''}
-                            onBlur={() => {this.inputOnBlur(this)}}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onBlur={() => {
+                                this.inputOnBlur(this)
+                            }}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             keyboardType="numeric"
                             returnKeyType={'done'}/>
                     </View>
@@ -888,7 +860,8 @@ class EditInvoice extends Component {
                 <View>
                     <TouchableWithoutFeedback onPress={dismissKeyboard}>
                         <View style={styles.row}>
-                            <Text style={styles.inputLabel}>{Message.NEW_INVOICE_ATTACHMENT_COUNT}<Text style={{color: '#D60000'}}>*</Text></Text>
+                            <Text style={styles.inputLabel}>{Message.NEW_INVOICE_ATTACHMENT_COUNT}<Text
+                                style={{color: '#D60000'}}>*</Text></Text>
                             <TextInput
                                 style={[styles.inputText, {flex: 1}]}
                                 placeholder={Message.NEW_INVOICE_ATTACHMENT_COUNT_PLACEHOLDER}
@@ -899,10 +872,13 @@ class EditInvoice extends Component {
                                     this.renderInvoiceCount(text);
                                 }}
                                 value={this.props.state.invoiceCount + ''}
-                                onBlur={() => {this.inputOnBlur(this)}}
-                                onFocus={() => {this.inputOnFocus(this)}}
+                                onBlur={() => {
+                                    this.inputOnBlur(this)
+                                }}
+                                onFocus={() => {
+                                    this.inputOnFocus(this)
+                                }}
                                 keyboardType="numeric"
-                                maxLength={3}
                                 returnKeyType={'done'}/>
                         </View>
                     </TouchableWithoutFeedback>
@@ -938,7 +914,9 @@ class EditInvoice extends Component {
                                     departCity: text
                                 })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={10}
                             value={this.props.state.departCity}
                             returnKeyType={'done'}/>
@@ -960,7 +938,9 @@ class EditInvoice extends Component {
                                     arriveCity: text
                                 })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={10}
                             value={this.props.state.arriveCity}
                             returnKeyType={'done'}/>
@@ -982,7 +962,9 @@ class EditInvoice extends Component {
                                     trainNumber: text
                                 })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={10}
                             value={this.props.state.trainNumber}
                             returnKeyType={'done'}/>
@@ -991,9 +973,11 @@ class EditInvoice extends Component {
                 <View style={CustomStyles.separatorLine}/>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.TRAIN_OR_PLANE_INVOICE_DETAIL_DATE}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.TRAIN_OR_PLANE_INVOICE_DETAIL_DATE}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TouchableOpacity style={styles.selectBtn} onPress={() => {
                             dismissKeyboard();
+                            Picker.hide();
                             this.props.changeState({isModalBoxOpen: true});
                         }}>
                             {
@@ -1013,7 +997,8 @@ class EditInvoice extends Component {
                 <View style={CustomStyles.separatorLine}/>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_AMOUNT}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.NEW_INVOICE_AMOUNT}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TextInput
                             style={[styles.inputText, {flex: 1}]}
                             underlineColorAndroid="transparent"
@@ -1024,8 +1009,12 @@ class EditInvoice extends Component {
                                 this.renderMoneyFormat(text, 0);
                             }}
                             value={Util.checkIsEmptyString(this.props.state.totalAmount) ? '' : this.props.state.totalAmount + ''}
-                            onBlur={() => {this.inputOnBlur(this)}}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onBlur={() => {
+                                this.inputOnBlur(this)
+                            }}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             keyboardType="numeric"
                             returnKeyType={'done'}/>
                     </View>
@@ -1056,7 +1045,8 @@ class EditInvoice extends Component {
             <View>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_INVOICE_CODE}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_INVOICE_CODE}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TextInput
                             style={[styles.inputText, {flex: 1}]}
                             placeholder={Message.NEW_INVOICE_CODE_PLACEHOLDER}
@@ -1066,18 +1056,22 @@ class EditInvoice extends Component {
                             value={this.props.state.invoiceCode}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,invoiceCode: text})
+                                    dataSaved: false, invoiceCode: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={12}
                             keyboardType="numeric"
                             returnKeyType={'done'}/>
-                        </View>
+                    </View>
                 </TouchableWithoutFeedback>
                 <View style={CustomStyles.separatorLine}/>
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
-                        <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_INVOICE_NUMBER}<Text style={{color: '#D60000'}}>*</Text></Text>
+                        <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_INVOICE_NUMBER}<Text
+                            style={{color: '#D60000'}}>*</Text></Text>
                         <TextInput
                             style={[styles.inputText, {flex: 1}]}
                             placeholder={Message.NEW_INVOICE_NUMBER_PLACEHOLDER}
@@ -1087,9 +1081,12 @@ class EditInvoice extends Component {
                             value={this.props.state.invoiceNo}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,invoiceNo: text})
+                                    dataSaved: false, invoiceNo: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             keyboardType="numeric"
                             maxLength={8}
                             returnKeyType={'done'}/>
@@ -1098,6 +1095,7 @@ class EditInvoice extends Component {
                 <View style={CustomStyles.separatorLine}/>
                 <TouchableOpacity onPress={() => {
                     dismissKeyboard();
+                    Picker.hide();
                     this.props.changeState({isModalBoxOpen: true});
                 }}>
                     <View style={styles.row}>
@@ -1120,7 +1118,8 @@ class EditInvoice extends Component {
                 {Util.contains(['01', '02'], this.props.state.invoiceTypeCode) ? (null) : (
                     <TouchableWithoutFeedback onPress={dismissKeyboard}>
                         <View style={styles.row}>
-                            <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_VALIDATION_CODE}<Text style={{color: '#D60000'}}>*</Text></Text>
+                            <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_VALIDATION_CODE}<Text
+                                style={{color: '#D60000'}}>*</Text></Text>
                             <TextInput
                                 style={[styles.inputText, {flex: 1}]}
                                 placeholder={Message.NEW_INVOICE_VALIDATION_CODE_PLACEHOLDER}
@@ -1130,9 +1129,12 @@ class EditInvoice extends Component {
                                 value={this.props.state.verifyCode}
                                 onChangeText={(text) => {
                                     this.props.changeState({
-                                        dataSaved: false,verifyCode: text})
+                                        dataSaved: false, verifyCode: text
+                                    })
                                 }}
-                                onFocus={() => {this.inputOnFocus(this)}}
+                                onFocus={() => {
+                                    this.inputOnFocus(this)
+                                }}
                                 keyboardType="numeric"
                                 maxLength={20}
                                 returnKeyType={'done'}/>
@@ -1154,9 +1156,12 @@ class EditInvoice extends Component {
                             value={this.props.state.buyerName}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,buyerName: text})
+                                    dataSaved: false, buyerName: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={50}
                             keyboardType={'default'}
                             returnKeyType={'done'}/>
@@ -1175,9 +1180,12 @@ class EditInvoice extends Component {
                             value={this.props.state.invoiceDetail}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,invoiceDetail: text})
+                                    dataSaved: false, invoiceDetail: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={50}
                             keyboardType={'default'}
                             returnKeyType={'done'}/>
@@ -1197,8 +1205,12 @@ class EditInvoice extends Component {
                             onChangeText={(text) => {
                                 this.renderMoneyFormat(text, 0);
                             }}
-                            onBlur={() => {this.inputOnBlur(this)}}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onBlur={() => {
+                                this.inputOnBlur(this)
+                            }}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             keyboardType="numeric"
                             returnKeyType={'done'}/>
                     </View>
@@ -1210,7 +1222,8 @@ class EditInvoice extends Component {
                             <Text style={styles.inputLabel}>
                                 {Message.NEW_INVOICE_BHSJ}
                                 {
-                                    Util.contains(['01', '02'], this.props.state.invoiceTypeCode) ? (<Text style={{color: '#D60000'}}>*</Text>):(
+                                    Util.contains(['01', '02'], this.props.state.invoiceTypeCode) ? (
+                                        <Text style={{color: '#D60000'}}>*</Text>) : (
                                         null
                                     )
                                 }
@@ -1227,14 +1240,18 @@ class EditInvoice extends Component {
                                     }
                                 }}
                                 value={Util.checkIsEmptyString(this.props.state.invoiceAmount) ? '' : this.props.state.invoiceAmount + ''}
-                                onBlur={() => {this.inputOnBlur(this)}}
-                                onFocus={() => {this.inputOnFocus(this)}}
+                                onBlur={() => {
+                                    this.inputOnBlur(this)
+                                }}
+                                onFocus={() => {
+                                    this.inputOnFocus(this)
+                                }}
                                 keyboardType="numeric"
                                 returnKeyType={'done'}/>
                         </View>
-                    </TouchableWithoutFeedback>):(null)}
+                    </TouchableWithoutFeedback>) : (null)}
                 {(Util.contains(['01', '02'], this.props.state.invoiceTypeCode)) ?
-                    (<View style={CustomStyles.separatorLine}/>):(null)}
+                    (<View style={CustomStyles.separatorLine}/>) : (null)}
                 <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <View style={styles.row}>
                         <Text style={styles.inputLabel}>{Message.INVOICE_DETAIL_SELLER}</Text>
@@ -1247,9 +1264,12 @@ class EditInvoice extends Component {
                             value={this.props.state.salerName}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,salerName: text})
+                                    dataSaved: false, salerName: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={50}
                             returnKeyType={'done'}/>
                     </View>
@@ -1267,9 +1287,12 @@ class EditInvoice extends Component {
                             value={this.props.state.remark}
                             onChangeText={(text) => {
                                 this.props.changeState({
-                                    dataSaved: false,remark: text})
+                                    dataSaved: false, remark: text
+                                })
                             }}
-                            onFocus={() => {this.inputOnFocus(this)}}
+                            onFocus={() => {
+                                this.inputOnFocus(this)
+                            }}
                             maxLength={50}
                             returnKeyType={'done'}/>
                     </View>
@@ -1291,19 +1314,19 @@ class EditInvoice extends Component {
      */
     reimbursementNow() {
         var thiz = this;
-        if(this.props.state.dataSaved){
-            thiz.doReimbursement(thiz,this.props.state,this.props.state.invoiceDetail);
+        if (this.props.state.dataSaved) {
+            thiz.doReimbursement(thiz, this.props.state, this.props.state.invoiceDetail);
             return;
         }
-        this.preSaveAction(true, function (data,goodsName) {
-            thiz.doReimbursement(thiz,data,goodsName)
+        this.preSaveAction(true, function (data, goodsName) {
+            thiz.doReimbursement(thiz, data, goodsName)
         })
     }
 
     /**
      * 立即报销
      */
-    doReimbursement(thiz,data,goodsName){
+    doReimbursement(thiz, data, goodsName) {
         if (Util.contains(['01', '02', '04', '10', '11'], data.invoiceTypeCode)) {
             if (data.checkState == '1' && data.reimburseState == '0') {
 
@@ -1320,15 +1343,17 @@ class EditInvoice extends Component {
                     targetInvoiceItem.imageAddress = '';
                     selectInvoiceList.push(targetInvoiceItem);
                     thiz.props.selectInvoice(thiz.props.navigation.state.params.expenseId, selectInvoiceList);
-                    thiz.props.resetNewReimbursement({noInit:true});
+                    thiz.props.resetNewReimbursement({noInit: true});
                     return;
                 }
                 if (Platform.OS === 'android') {
                     RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                        this.props.changeState({backDialogShow: true});
                         thiz.createReimbursementPicker();
                         Picker.show();
                     });
                 } else {
+                    this.props.changeState({backDialogShow: true});
                     thiz.createReimbursementPicker();
                     Picker.show();
                 }
@@ -1353,15 +1378,17 @@ class EditInvoice extends Component {
                 targetInvoiceItem.imageAddress = '';
                 selectInvoiceList.push(targetInvoiceItem);
                 thiz.props.selectInvoice(thiz.props.navigation.state.params.expenseId, selectInvoiceList);
-                thiz.props.resetNewReimbursement({noInit:true});
+                thiz.props.resetNewReimbursement({noInit: true});
                 return;
             }
             if (Platform.OS === 'android') {
                 RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                    this.props.changeState({backDialogShow: true});
                     thiz.createReimbursementPicker();
                     Picker.show();
                 });
             } else {
+                this.props.changeState({backDialogShow: true});
                 thiz.createReimbursementPicker();
                 Picker.show();
             }
@@ -1372,7 +1399,7 @@ class EditInvoice extends Component {
      * 关闭相机权限弹框
      */
     onCloseCamera() {
-        this.props.changeState({showNoPermissionDialog:false});
+        this.props.changeState({showNoPermissionDialog: false});
     }
 
     /**
@@ -1396,7 +1423,7 @@ class EditInvoice extends Component {
                 var options = {
                     maxWidth: 1600,
                     maxHeight: 1600,
-                    quality:0.6
+                    quality: 0.6
                 };
                 ImagePicker.launchCamera(options, (response) => {
                     if (response.didCancel || response.error || response.customButton) {
@@ -1406,7 +1433,7 @@ class EditInvoice extends Component {
                         this.props.changeState({
                             isLoading: true,
                         });
-                        this.props.ocrValidation({picture: response.data},{});
+                        this.props.ocrValidation({picture: response.data}, {});
                     }
                 });
             });
@@ -1434,7 +1461,7 @@ class EditInvoice extends Component {
                 var options = {
                     maxWidth: 1600,
                     maxHeight: 1600,
-                    quality:0.6
+                    quality: 0.6
                 };
                 ImagePicker.launchImageLibrary(options, (response) => {
                     if (response.didCancel || response.error || response.customButton) {
@@ -1444,7 +1471,7 @@ class EditInvoice extends Component {
                         this.props.changeState({
                             isLoading: true,
                         });
-                        this.props.ocrValidation({picture: response.data},{});
+                        this.props.ocrValidation({picture: response.data}, {});
                     }
                 });
             });
@@ -1454,7 +1481,7 @@ class EditInvoice extends Component {
     /**
      * 继续归集点击取消
      */
-    returnToInvoiceList(){
+    returnToInvoiceList() {
         this.props.changeState({
             showDialog: false,
         });
@@ -1477,6 +1504,58 @@ class EditInvoice extends Component {
         }
     }
 
+    /**
+     * 日期确认触发
+     */
+    calendarConfirmPress() {
+        let invoiceDate = this.props.state.invoiceDate;
+        const d = new Date();
+        const year = d.getFullYear() + '-';
+        let month = d.getMonth() + 1;
+        let day = d.getDate();
+        if (month < 10) {
+            month = '0' + month + '-';
+        } else {
+            month = month + '-';
+        }
+        if (day < 10) {
+            day = '0' + day;
+        } else {
+            day = day + '';
+        }
+
+        if (invoiceDate == '') {
+            invoiceDate = year + month + day;
+        }
+
+        this.props.changeState({
+            isShowCalendar: true,
+            isModalBoxOpen: false,
+            dataSaved: false,
+            invoiceDate: invoiceDate
+        });
+    }
+
+    /**
+     * 日历选择日触发事件
+     */
+    calendarDayPress(day) {
+        let year = day.year;
+        let month = day.month;
+        let selectedDay = day.day;
+        if (month < 10) {
+            month = '0' + month;
+        }
+        if (selectedDay < 10) {
+            selectedDay = '0' + selectedDay;
+        }
+        const showDateSelected = year + '年' + month + '月' + selectedDay + '日';
+        this.props.changeState({
+            invoiceDate: day.dateString.replace(/-/g, ''),
+            showDateSelected: showDateSelected
+        })
+    }
+
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         var input = null;
@@ -1494,352 +1573,269 @@ class EditInvoice extends Component {
         }
         return (
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
-                    <CommonLoading isShow={this.props.state.isLoading}/>
-                    {
-                        this.props.state.isModalBoxOpen ? (
+                <SafeAreaView style={styles.container}>
+                    <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                        <CommonLoading isShow={this.props.state.isLoading}/>
+                        {
+                            this.props.state.isModalBoxOpen ? (
 
-                            <View style={{
-                                position: 'absolute',
-                                height: deviceHeight,
-                                width: deviceWidth,
-                                left: 0,
-                                top: 0,
-                                zIndex: 1000,
-                                elevation: 4,
-                            }}>
-                                <TouchableWithoutFeedback onPress={() => {
-                                    this.props.changeState({
-                                        isModalBoxOpen: false,
-                                    })
-                                }} style={{
-                                    position: 'absolute',
-                                    left: 0,
-                                    top: 0,
-                                }}>
-                                    <View style={{
-                                        height: deviceHeight,
-                                        width: deviceWidth,
-                                        backgroundColor: '#000000',
-                                        opacity: 0.45,
-                                    }}/>
-                                </TouchableWithoutFeedback>
-                                <View
-                                    style={{
-                                        height: Platform.OS == 'ios' ? deviceHeight / 2 : deviceHeight / 3 * 2,
-                                        width: deviceWidth,
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        backgroundColor: '#FFFFFF',
-                                    }}>
-                                    <View style={{
-                                        flexDirection: 'row', alignItems: 'center',
-                                        height: ScreenUtil.scaleSize(90),
-                                        width: deviceWidth
-                                    }}>
-                                        <View style={{
-                                            flexDirection: 'row', alignItems: 'center',
-                                            height: ScreenUtil.scaleSize(90),
-                                            flex: 1, marginLeft: ScreenUtil.scaleSize(30)
-                                        }}>
-                                            <TouchableWithoutFeedback
+                                <View style={styles.parentView}>
+                                    <TouchableWithoutFeedback onPress={() => {
+                                        this.props.changeState({
+                                            isModalBoxOpen: false,
+                                        })
+                                    }} style={styles.touchableStyle}>
+                                        <View style={styles.touchableChildView}/>
+                                    </TouchableWithoutFeedback>
+                                    <View style={styles.childView}>
+                                        <View style={styles.calendarShowView}>
+                                            <View style={styles.dateView}>
+                                                <TouchableWithoutFeedback
+                                                    onPress={() => {
+                                                        this.props.changeState({isShowCalendar: true});
+                                                    }}
+                                                >
+                                                    <View style={styles.wrappedDateView}>
+                                                        <Text style={styles.wrappedDateText}>
+                                                            {
+                                                                this.getInitialDate()
+                                                            }
+                                                        </Text>
+                                                    </View>
+                                                </TouchableWithoutFeedback>
+                                            </View>
+                                            <TouchableOpacity
                                                 onPress={() => {
-                                                    this.props.changeState({isShowCalendar: true});
+                                                    this.calendarConfirmPress();
                                                 }}
                                             >
-                                                <View style={{
-                                                    height: ScreenUtil.scaleSize(90),
-                                                    borderColor: 'orange',
-                                                    borderBottomWidth: ScreenUtil.scaleSize(4),
-                                                    alignItems: 'center',
-                                                    justifyContent:'center'
-                                                }}>
-                                                    <Text style={{fontSize: ScreenUtil.setSpText(12),
-                                                        color: '#666666', fontWeight: 'bold'}}>
-                                                        {
-                                                            this.getInitialDate()
-                                                        }
+                                                <View style={styles.confirmView}>
+                                                    <Text style={styles.confirmText}>
+                                                        {Message.CONFIRM}
                                                     </Text>
                                                 </View>
-                                            </TouchableWithoutFeedback>
+                                            </TouchableOpacity>
                                         </View>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                let invoiceDate = this.props.state.invoiceDate;
-                                                const d = new Date();
-                                                const year = d.getFullYear() + '-';
-                                                let month = d.getMonth() + 1;
-                                                let day = d.getDate();
-                                                if (month < 10) {
-                                                    month = '0' + month + '-';
-                                                } else {
-                                                    month = month + '-';
-                                                }
-                                                if (day < 10) {
-                                                    day = '0' + day;
-                                                } else {
-                                                    day = day + 1 + '';
-                                                }
-
-                                                if (invoiceDate == '') {
-                                                    invoiceDate = year + month + day;
-                                                }
-
-                                                this.props.changeState({
-                                                    isShowCalendar: true,
-                                                    isModalBoxOpen: false,
-                                                    invoiceDate: invoiceDate
-                                                });
-                                            }}
-                                        >
-                                            <View style={{
-                                                flexDirection: 'row', alignItems: 'center', flex: 1,
-                                                marginRight: ScreenUtil.scaleSize(30)
-                                            }}>
-                                                <Text style={{
-                                                    fontSize: ScreenUtil.setSpText(12),
-                                                    color: 'orange', fontWeight: 'bold'
-                                                }}>{Message.CONFIRM}</Text>
-                                            </View>
-                                        </TouchableOpacity>
+                                        <View style={[CustomStyles.separatorLine, {width: deviceWidth}]}/>
+                                        {
+                                            <CalendarList
+                                                current={this.props.state.invoiceDate ? new Date(this.props.state.invoiceDate.substring(0, 4), this.props.state.invoiceDate.substring(4, 6) - 1, this.props.state.invoiceDate.substring(6)) : null}
+                                                // Callback which gets executed when visible months change in scroll view. Default = undefined
+                                                onVisibleMonthsChange={(months) => {
+                                                    console.log('now these months are visible', months);
+                                                }}
+                                                // Max amount of months allowed to scroll to the past. Default = 50
+                                                pastScrollRange={500}
+                                                // Max amount of months allowed to scroll to the future. Default = 50
+                                                futureScrollRange={500}
+                                                // Enable or disable scrolling of calendar list
+                                                scrollEnabled={true}
+                                                // Enable or disable vertical scroll indicator. Default = false
+                                                showScrollIndicator={true}
+                                                showWeekNumbers={true}
+                                                onDayPress={(day) => {
+                                                    this.calendarDayPress(day);
+                                                }}
+                                                markedDates={{
+                                                    [Util.formatDate(this.props.state.invoiceDate)]: {selected: true}
+                                                }}
+                                                theme={{
+                                                    selectedDayBackgroundColor: 'orange',
+                                                    selectedDayTextColor: '#ffffff',
+                                                    todayTextColor: 'orange',
+                                                }}
+                                            />
+                                        }
                                     </View>
-                                    <View style={[CustomStyles.separatorLine, {width: deviceWidth}]}/>
-                                    {
-                                        <CalendarList
-                                            current={this.props.state.invoiceDate ? new Date(this.props.state.invoiceDate.substring(0, 4), this.props.state.invoiceDate.substring(4, 6) - 1, this.props.state.invoiceDate.substring(6)) : null}
-                                            // Callback which gets executed when visible months change in scroll view. Default = undefined
-                                            onVisibleMonthsChange={(months) => {
-                                                console.log('now these months are visible', months);
-                                            }}
-                                            // Max amount of months allowed to scroll to the past. Default = 50
-                                            pastScrollRange={500}
-                                            // Max amount of months allowed to scroll to the future. Default = 50
-                                            futureScrollRange={500}
-                                            // Enable or disable scrolling of calendar list
-                                            scrollEnabled={true}
-                                            // Enable or disable vertical scroll indicator. Default = false
-                                            showScrollIndicator={true}
-                                            showWeekNumbers={true}
-                                            onDayPress={(day) => {
-                                                let year = day.year;
-                                                let month = day.month;
-                                                let selectedDay = day.day;
-                                                if (month < 10) {
-                                                    month = '0' + month;
-                                                }
-                                                if (selectedDay < 10) {
-                                                    selectedDay = '0' + selectedDay;
-                                                }
-                                                const showDateSelected = year + '年' + month + '月' + selectedDay + '日';
-                                                this.props.changeState({
-                                                    invoiceDate: day.dateString.replace(/-/g, ''),
-                                                    showDateSelected: showDateSelected
-                                                })
-                                            }}
-                                            markedDates={{
-                                                [Util.formatDate(this.props.state.invoiceDate)]: {selected: true}
-                                            }}
-                                            theme={{
-                                                selectedDayBackgroundColor: 'orange',
-                                                selectedDayTextColor: '#ffffff',
-                                                todayTextColor: 'orange',
-                                            }}
-                                        />
-                                    }
                                 </View>
-                            </View>
-                        ) : null
-                    }
-                    <Dialog
-                        content={Message.NEW_INVOICE_BACK_SAVE}
-                        type={'confirm'}
-                        leftBtnText={Message.CANCEL}
-                        rightBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.saveModalVisible}
-                        leftBtnStyle={{color: '#A5A5A5',}}
-                        rightBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal.bind(this)}
-                        leftBtnClick={this._cancelClick.bind(this)}
-                        rightBtnClick={this.preSaveAction.bind(this,false,null)}
-                        thisComponent={this}
-                    />
+                            ) : null
+                        }
+                        <Dialog
+                            content={Message.NEW_INVOICE_BACK_SAVE}
+                            type={'confirm'}
+                            leftBtnText={Message.CANCEL}
+                            rightBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.saveModalVisible}
+                            leftBtnStyle={{color: '#A5A5A5',}}
+                            rightBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal.bind(this)}
+                            leftBtnClick={this._cancelClick.bind(this)}
+                            rightBtnClick={this.preSaveAction.bind(this, false, null)}
+                            thisComponent={this}
+                        />
 
-                    <Dialog
-                        titleText={this.props.state.dialogTitle}
-                        content={this.props.state.dialogContent}
-                        type={'confirm'}
-                        leftBtnText={Message.CANCEL}
-                        rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
-                        modalVisible={this.props.state.showNoPermissionDialog}
-                        leftBtnStyle={{color: '#A5A5A5',}}
-                        rightBtnStyle={{color: '#FFAA00',}}
-                        rightBtnClick={Permissions.openSettings}
-                        thisComponent={this}
-                        onClose={this.onCloseCamera.bind(this)}
-                    />
+                        <Dialog
+                            titleText={this.props.state.dialogTitle}
+                            content={this.props.state.dialogContent}
+                            type={'confirm'}
+                            leftBtnText={Message.CANCEL}
+                            rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
+                            modalVisible={this.props.state.showNoPermissionDialog}
+                            leftBtnStyle={{color: '#A5A5A5',}}
+                            rightBtnStyle={{color: '#FFAA00',}}
+                            rightBtnClick={Permissions.openSettings}
+                            thisComponent={this}
+                            onClose={this.onCloseCamera.bind(this)}
+                        />
 
-                    <PopDialog
-                        showVisible={this.props.state.showDialog}
-                        thisComponent={this}
-                        scanClick={()=> {
-                            this.props.changeState({showDialog: false});
-                            Permissions.checkMultiplePermissions(['camera', 'photo'])
-                                .then(response => {
-                                    //判断是否具有相机权限，相册权限
-                                    if (!Util.checkPermission(response.camera)) {
-                                        this.props.changeState({
-                                            dialogTitle: Message.AUTHORITY_SETTING,
-                                            dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
-                                            showNoPermissionDialog: true,
-                                        });
-                                        return;
-                                    }
-
-                                    if(this.props.navigation.state.params.isFromScan){
-                                        setTimeout(
-                                            () => {
-                                                this.props.changeScanQrCodeState({readQrCodeEnable: true});
-                                            },
-                                            20
-                                        );
-                                        this.props.back()
-                                    }else{
+                        <PopDialog
+                            showVisible={this.props.state.showDialog}
+                            thisComponent={this}
+                            scanClick={()=> {
+                                this.props.changeState({showDialog: false});
+                                Permissions.checkMultiplePermissions(['camera', 'photo'])
+                                    .then(response => {
+                                        //判断是否具有相机权限，相册权限
+                                        if (!Util.checkPermission(response.camera)) {
+                                            this.props.changeState({
+                                                dialogTitle: Message.AUTHORITY_SETTING,
+                                                dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
+                                                showNoPermissionDialog: true,
+                                            });
+                                            return;
+                                        }
                                         this.props.navigateScanQrCode()
-                                    }
-                                });
+                                    });
 
-                        }}
-                        photoClick={()=> {
-                            this.props.changeState({showDialog: false});
-                            setTimeout(
-                                () => {
-                                    this.ocrValidationFromCamera()
-                                },
-                                100
-                            );
+                            }}
+                            photoClick={()=> {
+                                this.props.changeState({showDialog: false});
+                                setTimeout(
+                                    () => {
+                                        this.ocrValidationFromCamera()
+                                    },
+                                    100
+                                );
 
-                        }}
-                        albumClick={()=> {
-                            this.props.changeState({showDialog: false});
-                            setTimeout(
-                                () => {
-                                    this.ocrValidationFromImageLibrary()
-                                },
-                                100
-                            );
-                        }}
-                        cancelClick={
-                            this.returnToInvoiceList.bind(this)
-                        }/>
+                            }}
+                            albumClick={()=> {
+                                this.props.changeState({showDialog: false});
+                                setTimeout(
+                                    () => {
+                                        this.ocrValidationFromImageLibrary()
+                                    },
+                                    100
+                                );
+                            }}
+                            cancelClick={
+                                this.returnToInvoiceList.bind(this)
+                            }
+                            backClick={() => this.props.changeState({showDialog: false})}
+                        />
 
-                    <BackDialog backgroundClick={(component) => {
-                        Picker.hide();
-                        component.props.changeState({backDialogShow: false});
-                    }} isShow={this.props.state.backDialogShow}
-                                thisComponent={this}/>
-                    {this.renderImgPreview()}
-                    {
-                        this.props.navigation.state.params.hideSave ? (
-                            <Header
-                                titleText={title}
-                                thisComponent={this}
-                                backClick={this.onBack}
-                                backControl={false}
-                            />
-                        ) : (
-                            <Header
-                                titleText={title}
-                                thisComponent={this}
-                                backClick={this.onBack}
-                                rightText={Message.SAVE}
-                                rightClick={this.preSaveAction.bind(this,false,null)}
-                                backControl={false}
-                            />
-                        )
-                    }
+                        <BackDialog
+                            backgroundClick={(component) => {
+                                Picker.hide();
+                                component.props.changeState({backDialogShow: false});
+                            }}
+                            isShow={this.props.state.backDialogShow}
+                            thisComponent={this}/>
+                        {this.renderImgPreview()}
+                        {
+                            this.props.navigation.state.params.hideSave ? (
+                                <Header
+                                    titleText={title}
+                                    thisComponent={this}
+                                    backClick={this.onBack}
+                                    backControl={false}
+                                />
+                            ) : (
+                                <Header
+                                    titleText={title}
+                                    thisComponent={this}
+                                    backClick={this.onBack}
+                                    rightText={Message.SAVE}
+                                    rightClick={this.preSaveAction.bind(this, false, null)}
+                                    backControl={false}
+                                />
+                            )
+                        }
 
 
-                    <InputScrollView style={styles.content} keyboardOffset={80} keyboardShouldPersistTaps={'handled'}>
-                        <TouchableOpacity style={{flex:1}} onPress={() => {
-                            this.props.changeState({backDialogShow: true});
+                        <InputScrollView style={styles.content} keyboardOffset={80}
+                                         keyboardShouldPersistTaps={'handled'}>
+                            <TouchableOpacity style={{flex: 1}} onPress={() => {
+                                this.props.changeState({backDialogShow: true});
 
-                            if (Platform.OS === 'android') {
-                                RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                if (Platform.OS === 'android') {
+                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                        this.createInvoiceTypePicker();
+                                        Picker.show();
+                                    });
+                                } else {
                                     this.createInvoiceTypePicker();
                                     Picker.show();
-                                });
-                            } else {
-                                this.createInvoiceTypePicker();
-                                Picker.show();
-                            }
-
-                        }}>
-                            <View style={styles.selectBtn}>
-                                <Text style={styles.inputLabel}>
-                                    {Message.NEW_INVOICE_TYPE}
-                                </Text>
-                                {
-                                    Util.checkIsEmptyString(this.props.state.invoiceTypeName) ? (
-                                        <Text style={[styles.inputText, {color: '#ABABAB'}]}>
-                                            {Message.NEW_INVOICE_TYPE_PLACEHOLDER}
-                                        </Text>
-                                    ) : (
-                                        <Text style={styles.inputText}>
-                                            {this.props.state.invoiceTypeName}
-                                        </Text>
-                                    )
                                 }
-                                <Image source={require('./../../img/common/arrow.png')} style={styles.arrowIcon}/>
-                            </View>
-                        </TouchableOpacity>
 
-                        <View style={CustomStyles.separatorLine}/>
-                        {input}
-                        {(this.props.state.dataSourceCode == '102' || this.props.state.dataSourceCode == '103') ?  <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                            <View style={styles.row}>
-                                <Text style={styles.inputLabel}>{Message.PICTURE}</Text>
-                            </View>
-                        </TouchableWithoutFeedback> : <View/>}
-
-                        {(this.props.state.dataSourceCode == '102' || this.props.state.dataSourceCode == '103') ?
-                            (<TouchableOpacity onPress={() => {
-                                this.cancelKeyboardEvent();
-                                this.props.changeState({
-                                    previewShow: true,
-                                })
                             }}>
-                                { Platform.OS === 'android' ? (
-                                    <Image
-                                        style={{
-                                            height: ScreenUtil.scaleSize(437),
-                                            width: ScreenUtil.scaleSize(690),
-                                            resizeMode: 'contain',
-                                        }}
-                                        source={{uri: this.props.state.imageBase64}}
-                                    />
-                                ) : (
-                                    <Image source={{
-                                        uri: API.GET_INVOICE_IMAGE,
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'token': token
-                                        },
-                                        body: JSON.stringify({uuid: this.props.navigation.state.params.uuid})
-                                    }} style={{
-                                        height: ScreenUtil.scaleSize(437),
-                                        width: ScreenUtil.scaleSize(690),
-                                        resizeMode: 'contain',
-                                    }}/>
-                                )}
+                                <View style={styles.selectBtn}>
+                                    <Text style={styles.inputLabel}>
+                                        {Message.NEW_INVOICE_TYPE}
+                                    </Text>
+                                    {
+                                        Util.checkIsEmptyString(this.props.state.invoiceTypeName) ? (
+                                            <Text style={[styles.inputText, {color: '#ABABAB'}]}>
+                                                {Message.NEW_INVOICE_TYPE_PLACEHOLDER}
+                                            </Text>
+                                        ) : (
+                                            <Text style={styles.inputText}>
+                                                {this.props.state.invoiceTypeName}
+                                            </Text>
+                                        )
+                                    }
+                                    <Image source={require('./../../img/common/arrow.png')} style={styles.arrowIcon}/>
+                                </View>
                             </TouchableOpacity>
-                            ):(<View/>)}
-                        <View style={{
-                            height: ScreenUtil.scaleSize(240)
-                        }} />
-                    </InputScrollView>
-                    {this.renderBottomView()}
-                </View>
+
+                            <View style={CustomStyles.separatorLine}/>
+                            {input}
+                            {(this.props.state.dataSourceCode == '102' || this.props.state.dataSourceCode == '103') ?
+                                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                                    <View style={styles.row}>
+                                        <Text style={styles.inputLabel}>{Message.PICTURE}</Text>
+                                    </View>
+                                </TouchableWithoutFeedback> : <View/>}
+
+                            {(this.props.state.dataSourceCode == '102' || this.props.state.dataSourceCode == '103') ?
+                                (<TouchableOpacity onPress={() => {
+                                        this.cancelKeyboardEvent();
+                                        this.props.changeState({
+                                            previewShow: true,
+                                        })
+                                    }}>
+                                        { Platform.OS === 'android' ? (
+                                            <Image
+                                                style={{
+                                                    height: ScreenUtil.scaleSize(437),
+                                                    width: ScreenUtil.scaleSize(690),
+                                                    resizeMode: 'contain',
+                                                }}
+                                                source={{uri: this.props.state.imageBase64}}
+                                            />
+                                        ) : (
+                                            <Image source={{
+                                                uri: API.GET_INVOICE_IMAGE,
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'token': token
+                                                },
+                                                body: JSON.stringify({uuid: this.props.navigation.state.params.uuid})
+                                            }} style={{
+                                                height: ScreenUtil.scaleSize(437),
+                                                width: ScreenUtil.scaleSize(690),
+                                                resizeMode: 'contain',
+                                            }}/>
+                                        )}
+                                    </TouchableOpacity>
+                                ) : (<View/>)}
+                            <View style={{
+                                height: ScreenUtil.scaleSize(240)
+                            }}/>
+                        </InputScrollView>
+                        {this.renderBottomView()}
+                    </View>
+                </SafeAreaView>
             </TouchableWithoutFeedback>
         )
     }
@@ -1857,10 +1853,10 @@ function mapDispatchToProps(dispatch) {
     return bindActionCreators({
         back: back,
         initData: initData,
-        ocrValidation:ocrValidation,
-        navigateScanQrCode:navigateScanQrCode,
-        backToInvoiceList:backToInvoiceList,
-        navigateNewReimbursement:navigateNewReimbursement,
+        ocrValidation: ocrValidation,
+        navigateScanQrCode: navigateScanQrCode,
+        backToInvoiceList: backToInvoiceList,
+        navigateNewReimbursement: navigateNewReimbursement,
         changeScanQrCodeState: changeScanQrCodeState,
         invoiceDelete: invoiceDelete,
         saveInvoice: saveInvoice,
@@ -1878,7 +1874,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(EditInvoice);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F3F3'
+        backgroundColor: 'white'
     },
     info: {
         height: ScreenUtil.scaleSize(70),
@@ -1905,7 +1901,7 @@ const styles = StyleSheet.create({
         color: '#666666',
         fontSize: ScreenUtil.setSpText(9),
         padding: 0,
-        flex:1,
+        flex: 1,
     },
     bottom: {
         height: ScreenUtil.scaleSize(120),
@@ -1937,5 +1933,64 @@ const styles = StyleSheet.create({
         height: ScreenUtil.scaleSize(32),
         resizeMode: Image.resizeMode.contain,
     },
-
+    parentView: {
+        position: 'absolute',
+        height: deviceHeight,
+        width: deviceWidth,
+        left: 0,
+        top: 0,
+        zIndex: 1000,
+        elevation: 4
+    },
+    touchableStyle: {
+        position: 'absolute',
+        left: 0,
+        top: 0
+    },
+    touchableChildView: {
+        height: deviceHeight,
+        width: deviceWidth,
+        backgroundColor: '#000000',
+        opacity: 0.45
+    },
+    childView: {
+        height: Platform.OS == 'ios' ? deviceHeight / 2 : deviceHeight / 3 * 2,
+        width: deviceWidth,
+        position: 'absolute',
+        bottom: 0,
+        backgroundColor: '#FFFFFF'
+    },
+    calendarShowView: {
+        flexDirection: 'row', alignItems: 'center',
+        height: ScreenUtil.scaleSize(90),
+        width: deviceWidth
+    },
+    dateView: {
+        flexDirection: 'row', alignItems: 'center',
+        height: ScreenUtil.scaleSize(90),
+        flex: 1, marginLeft: ScreenUtil.scaleSize(30)
+    },
+    wrappedDateView: {
+        height: ScreenUtil.scaleSize(90),
+        borderColor: 'orange',
+        borderBottomWidth: ScreenUtil.scaleSize(4),
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    wrappedDateText: {
+        fontSize: ScreenUtil.setSpText(12),
+        color: '#666666',
+        fontWeight: 'bold'
+    },
+    confirmView: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: ScreenUtil.scaleSize(30)
+    },
+    confirmText: {
+        fontSize: ScreenUtil.setSpText(12),
+        color: 'orange',
+        fontWeight: 'bold'
+    },
 });

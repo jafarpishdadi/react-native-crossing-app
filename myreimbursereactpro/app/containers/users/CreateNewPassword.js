@@ -26,6 +26,7 @@ import ScreenUtil from "../../utils/ScreenUtil";
 import Util from '../../utils/Util';
 import Dialog from '../../containers/common/Dialog';
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 class CreateNewPassword extends Component {
 
@@ -108,72 +109,74 @@ class CreateNewPassword extends Component {
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         return(
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
-                    <Header
-                        titleText={Message.FIND_PASSWORD}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                    />
-                    <Dialog
-                        content={this.props.state.showContent}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal}
-                        alertBtnClick={this._closeModal}
-                        thisComponent={this}
-                    />
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.NEW_PASSWORD}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_PASSWORD_INPUT_RULE_LABEL}
-                                maxLength={12}
-                                placeholderTextColor="#ABABAB"
-                                secureTextEntry={true}
-                                underlineColorAndroid="transparent"
-                                selectionColor="#FFAA00"
-                                value={this.props.state.createNewPassword}
-                                onChangeText={(text) => {this.props.changeState({createNewPassword: text})}}
-                                returnKeyType={'done'}/>
+            <SafeAreaView style={styles.container}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
+                        <Header
+                            titleText={Message.FIND_PASSWORD}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                        />
+                        <Dialog
+                            content={this.props.state.showContent}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal}
+                            alertBtnClick={this._closeModal}
+                            thisComponent={this}
+                        />
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.NEW_PASSWORD}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_PASSWORD_INPUT_RULE_LABEL}
+                                    maxLength={12}
+                                    placeholderTextColor="#ABABAB"
+                                    secureTextEntry={true}
+                                    underlineColorAndroid="transparent"
+                                    selectionColor="#FFAA00"
+                                    value={this.props.state.createNewPassword}
+                                    onChangeText={(text) => {this.props.changeState({createNewPassword: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_CONFIRM}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_PASSWORD_CONFIRM_INPUT_LABEL}
+                                    maxLength={12}
+                                    placeholderTextColor="#ABABAB"
+                                    secureTextEntry={true}
+                                    underlineColorAndroid="transparent"
+                                    selectionColor="#FFAA00"
+                                    value={this.props.state.createConfirmedPassword}
+                                    onChangeText={(text) => {this.props.changeState({createConfirmedPassword: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_CONFIRM}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_PASSWORD_CONFIRM_INPUT_LABEL}
-                                maxLength={12}
-                                placeholderTextColor="#ABABAB"
-                                secureTextEntry={true}
-                                underlineColorAndroid="transparent"
-                                selectionColor="#FFAA00"
-                                value={this.props.state.createConfirmedPassword}
-                                onChangeText={(text) => {this.props.changeState({createConfirmedPassword: text})}}
-                                returnKeyType={'done'}/>
-                        </View>
-                        <View style={CustomStyles.separatorLine}/>
+                        <TouchableOpacity
+                            style={{
+                                marginTop: ScreenUtil.scaleSize(200),
+                            }}
+                            onPress={() => {
+                                this.checkData();
+                            }}>
+                            <Image source={require('../../img/register/confirm_btn.png')}
+                                   style={{
+                                       height: ScreenUtil.scaleSize(75),
+                                       width: ScreenUtil.scaleSize(550),
+                                       resizeMode: 'stretch',
+                                       alignSelf: 'center',
+                                   }}/>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={{
-                            marginTop: ScreenUtil.scaleSize(200),
-                        }}
-                        onPress={() => {
-                            this.checkData();
-                        }}>
-                        <Image source={require('../../img/register/confirm_btn.png')}
-                               style={{
-                                   height: ScreenUtil.scaleSize(75),
-                                   width: ScreenUtil.scaleSize(550),
-                                   resizeMode: 'stretch',
-                                   alignSelf: 'center',
-                               }}/>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         )
     }
 }

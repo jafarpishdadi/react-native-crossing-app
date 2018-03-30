@@ -307,7 +307,10 @@ export default nav = (state = initialState, action) => {
                 NavigationActions.reset({
                     index: 1,
                     actions: [
-                        NavigationActions.navigate({routeName: 'MainScreen'}),
+                        NavigationActions.navigate({
+                            routeName: 'MainScreen',
+                            params: action.params,
+                        }),
                         NavigationActions.navigate({routeName: 'ReimbursementList'})
                     ]
                 }),
@@ -495,9 +498,8 @@ export default nav = (state = initialState, action) => {
         case types.RESET_INVOICE_LIST:
             nextState = AppNavigator.router.getStateForAction(
                 NavigationActions.reset({
-                    index: 1,
+                    index: 0,
                     actions: [
-                        NavigationActions.navigate({routeName: 'Login'}),
                         NavigationActions.navigate({routeName: 'MainScreen',params:{tab:'Invoice'}}),
                     ]
                 }),
@@ -563,6 +565,36 @@ export default nav = (state = initialState, action) => {
                 NavigationActions.navigate({
                     routeName: 'TravelApplyList',
                     params: action.params,
+                }),
+                state
+            );
+            break;
+        case types.RESET_TRAVEL_APPLY_LIST:
+            nextState = AppNavigator.router.getStateForAction(
+                NavigationActions.reset({
+                    index: 1,
+                    actions: [
+                        NavigationActions.navigate({
+                            routeName: 'MainScreen',
+                            params: action.params,
+                        }),
+                        NavigationActions.navigate({routeName: 'TravelApplyList'})
+                    ]
+                }),
+                state
+            );
+            break;
+        case types.RESET_LOAN_LIST:
+            nextState = AppNavigator.router.getStateForAction(
+                NavigationActions.reset({
+                    index: 1,
+                    actions: [
+                        NavigationActions.navigate({
+                            routeName: 'MainScreen',
+                            params: action.params,
+                        }),
+                        NavigationActions.navigate({routeName: 'LoanOrderList'})
+                    ]
                 }),
                 state
             );

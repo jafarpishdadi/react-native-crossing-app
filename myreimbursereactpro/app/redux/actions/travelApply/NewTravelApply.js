@@ -6,6 +6,7 @@ import Util from '../../../utils/Util';
 import HttpUtil from '../../../network/HttpUtil';
 import API from '../../../utils/API';
 import Message from '../../../constant/Message';
+import {resetTravelApplyList} from '../../../redux/actions/navigator/Navigator';
 
 export const changeState = (state) => {
     return {
@@ -26,10 +27,6 @@ export const loadData = (params) => {
         }))
         if (params && params.source === 'TravelApplyDetail') {
             dispatch(changeState(params.data));
-        } else {
-            dispatch(changeState({
-                titleText: Message.NEW_TRAVEL_APPLY_TITLE
-            }))
         }
         dispatch(getOrganization({organizationType: 'dep'}));
     }
@@ -77,9 +74,12 @@ export const recogniseVoiceRecord = (requestData) => {
             if (status) {
                 if (ret.code == '00000') {
                     const NewTravelApply = getState().NewTravelApply;
-                    var cause = NewTravelApply.cause + ret.data.result;
+                    var cause = NewTravelApply.cause.substring(0, NewTravelApply.selectionStart)
+                        + ret.data.result
+                        + NewTravelApply.cause.substring(NewTravelApply.selectionEnd, NewTravelApply.cause.length);
+
                     if (cause.length > 300) {
-                        cause = cause.substring(0, 299);
+                        cause = cause.substring(0, 300);
                     }
                     dispatch(changeState({
                         cause: cause
@@ -131,3 +131,58 @@ export const uploadAttachment = (attachList, fileSource) => {
         })
     }
 }
+
+/**
+ * 保存或者提交差旅申请单
+ * @param requestData 请求实体
+ */
+export const saveTravelApply = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.INSERT_TRAVEL_APPLY_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetTravelApplyList());
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+/**
+ * 更新差旅申请单
+ * @param requestData 请求实体
+ */
+export const updateTravelApply = (requestData) => {
+
+    return dispatch => {
+        dispatch(changeState({
+            isLoading: true,
+        }));
+        return HttpUtil.postJson(API.UPDATE_TRAVEL_APPLY_BILL, requestData, dispatch, function (ret, status) {
+
+            dispatch(changeState({
+                isLoading: false,
+            }));
+            if (status) {
+                if (ret.status) {
+                    Util.showToast(Message.ACTION_SUCCESS);
+                    dispatch(resetTravelApplyList());
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+

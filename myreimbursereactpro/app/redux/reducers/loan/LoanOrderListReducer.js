@@ -11,6 +11,7 @@ const initialState = {
     loanList: [],          //借款申请列表
     isRefreshing: false,   //列表是否刷新中
     showLoading: false,         //上拉加载时，是否显示加载信息,如‘正在加载...’
+    viewRef: null,
 }
 
 const  loanOrderListReducer = (state = initialState, action) => {

@@ -40,9 +40,11 @@ import {ocrValidation} from "../../redux/actions/invoice/Invoice";
 import API from "../../utils/API";
 import Picker from "react-native-picker";
 import PopDialog from "./../common/PopDialog";
+import BackDialog from "../../containers/common/BackDialog";
 import Util from "../../utils/Util";
 import Store from "react-native-simple-store";
 import CommonLoading from "../../containers/common/CommonLoading";
+import SafeAreaView from "react-native-safe-area-view";
 
 const Permissions = require('react-native-permissions');
 var RNBridgeModule = NativeModules.RNBridgeModule;
@@ -51,15 +53,6 @@ class InvoiceDetails extends Component {
     static navigationOptions = ({navigation}) => ({
         header: null
     });
-
-    /**
-     * 设置scrollView高度
-     */
-    setMinHeight(contentHeight) {
-        this.props.changeState({
-            minHeight: contentHeight + ScreenUtil.scaleSize(8),
-        })
-    }
 
     componentWillMount() {
         this.props.initData();
@@ -82,7 +75,7 @@ class InvoiceDetails extends Component {
             this.props.changeState({showReimbursementBtn: this.props.navigation.state.params.showReimbursementBtn});
         }
         this.props.changeState(this.props.navigation.state.params);
-        this.props.loadData(this.props.navigation.state.params.uuid,this.props.navigation.state.params.fromNew);
+        this.props.loadData(this.props.navigation.state.params.uuid, this.props.navigation.state.params.fromNew);
 
         if (Platform.OS != 'ios' && this.props.navigation.state.params.uuid) {
             setTimeout(() => {
@@ -169,7 +162,7 @@ class InvoiceDetails extends Component {
      */
     handleDateFormat(invoiceDate) {
         var date = '';
-        if(invoiceDate){
+        if (invoiceDate) {
             date = invoiceDate.substring(0, 4) + Message.YEAR + invoiceDate.substring(4, 6) + Message.MONTH + invoiceDate.substring(6) + Message.DAY;
         }
         return date;
@@ -179,10 +172,10 @@ class InvoiceDetails extends Component {
      * 处理金额保留小数位数
      * @returns {string}
      */
-    handleAmount () {
+    handleAmount() {
         var money;
-        if(this.props.invoiceDetails.totalAmount && this.props.invoiceDetails.totalAmount != ''){
-             money = parseFloat(this.props.invoiceDetails.totalAmount).toFixed(2);
+        if (this.props.invoiceDetails.totalAmount && this.props.invoiceDetails.totalAmount != '') {
+            money = parseFloat(this.props.invoiceDetails.totalAmount).toFixed(2);
         }
         return money;
     }
@@ -292,12 +285,12 @@ class InvoiceDetails extends Component {
                         <Text
                             style={styles.rowInput}>{this.handleDateFormat(this.props.invoiceDetails.invoiceDate)}</Text>
                     </View>
-                    {Util.contains(['04', '10','11'], this.props.invoiceDetails.invoiceTypeCode)?(
+                    {Util.contains(['04', '10', '11'], this.props.invoiceDetails.invoiceTypeCode) ? (
                         <View style={styles.row}>
-                        <Text style={styles.rowLabel}>{Message.INVOICE_DETAIL_VALIDATION_CODE + ':'}</Text>
-                        <Text
-                            style={styles.rowInput}>{this.props.invoiceDetails.verifyCode}</Text>
-                    </View>):(<View/>)}
+                            <Text style={styles.rowLabel}>{Message.INVOICE_DETAIL_VALIDATION_CODE + ':'}</Text>
+                            <Text
+                                style={styles.rowInput}>{this.props.invoiceDetails.verifyCode}</Text>
+                        </View>) : (<View/>)}
                     <View style={styles.row}>
                         <Text style={styles.rowLabel}>{Message.INVOICE_DETAIL_BUYER + ':'}</Text>
                         <Text
@@ -320,7 +313,7 @@ class InvoiceDetails extends Component {
                                 style={styles.rowInput}>{this.props.invoiceDetails.invoiceAmount == '' ? '' : parseFloat(this.props.invoiceDetails.invoiceAmount).toFixed(2)}</Text>
                         </View>
                     ) : (
-                    <View/>
+                        <View/>
                     )}
                     <View style={styles.row}>
                         <Text style={styles.rowLabel}>{Message.INVOICE_DETAIL_SELLER + ':'}</Text>
@@ -476,7 +469,7 @@ class InvoiceDetails extends Component {
     /**
      * 继续归集点击取消
      */
-    returnToInvoiceList(){
+    returnToInvoiceList() {
         this.props.changeState({
             showDialog: false,
         });
@@ -486,8 +479,8 @@ class InvoiceDetails extends Component {
     /**
      * 返回上一个页面并激活扫码
      */
-    backToPrevious(){
-        this.props.changeState({alreadyInNewReimbursement:false});
+    backToPrevious() {
+        this.props.changeState({alreadyInNewReimbursement: false});
         this.onBack(this);
     }
 
@@ -502,7 +495,7 @@ class InvoiceDetails extends Component {
      * 关闭相机权限弹框
      */
     onCloseCamera() {
-        this.props.changeState({showNoPermissionDialog:false});
+        this.props.changeState({showNoPermissionDialog: false});
     }
 
     /**
@@ -526,7 +519,7 @@ class InvoiceDetails extends Component {
                 var options = {
                     maxWidth: 1600,
                     maxHeight: 1600,
-                    quality:0.6
+                    quality: 0.6
                 };
                 ImagePicker.launchCamera(options, (response) => {
                     if (response.didCancel || response.error || response.customButton) {
@@ -537,7 +530,7 @@ class InvoiceDetails extends Component {
                         this.props.changeState({
                             isLoading: true,
                         });
-                        this.props.ocrValidation({picture: response.data},{});
+                        this.props.ocrValidation({picture: response.data}, {});
                     }
                 });
             });
@@ -565,7 +558,7 @@ class InvoiceDetails extends Component {
                 var options = {
                     maxWidth: 1600,
                     maxHeight: 1600,
-                    quality:0.6
+                    quality: 0.6
                 };
                 ImagePicker.launchImageLibrary(options, (response) => {
                     if (response.didCancel || response.error || response.customButton) {
@@ -576,7 +569,7 @@ class InvoiceDetails extends Component {
                         this.props.changeState({
                             isLoading: true,
                         });
-                        this.props.ocrValidation({picture: response.data},{});
+                        this.props.ocrValidation({picture: response.data}, {});
                     }
                 });
             });
@@ -659,12 +652,16 @@ class InvoiceDetails extends Component {
         var targetInvoiceItem = {};
         var invoiceItem = this.props.invoiceDetails;
         targetInvoiceItem.invoiceType = invoiceItem.invoiceTypeCode;
-        targetInvoiceItem.invoiceNum = invoiceItem.invoiceCount == '' ? '1' : invoiceItem.invoiceCount;;
+        targetInvoiceItem.invoiceNum = invoiceItem.invoiceCount == '' ? '1' : invoiceItem.invoiceCount;
+        ;
         targetInvoiceItem.invoiceDetail = invoiceItem.goodsName;
         targetInvoiceItem.invoiceUUID = invoiceItem.uuid;
         targetInvoiceItem.invoiceDateStr = Util.formatDate(invoiceItem.invoiceDate);
         targetInvoiceItem.invoiceAmount = invoiceItem.totalAmount;
         targetInvoiceItem.imageAddress = '';
+        targetInvoiceItem.checkStatusCode = invoiceItem.checkState;
+        targetInvoiceItem.invoiceTypeName = Util.getInvoiceTypeName(invoiceItem.invoiceTypeCode);
+        targetInvoiceItem.invoiceTaxamount = invoiceItem.taxAmount;
         selectInvoiceList.push(targetInvoiceItem);
         return selectInvoiceList;
     }
@@ -698,7 +695,14 @@ class InvoiceDetails extends Component {
                 }
 
                 var selectedList = this.getSelectedInvoiceListToNewReimbursement();
-                this.props.resetNewReimbursement({applyTypeName: areaStr, selectedList: selectedList});
+                this.props.resetNewReimbursement({
+                    applyTypeName: areaStr,
+                    selectedList: selectedList
+                });
+                this.props.changeState({backDialogShow: false});
+            },
+            onPickerCancel: data => {
+                this.props.changeState({backDialogShow: false});
             }
         });
     }
@@ -710,19 +714,26 @@ class InvoiceDetails extends Component {
         if (Util.contains(['01', '02', '04', '10', '11'], this.props.invoiceDetails.invoiceTypeCode)) {
             if (this.props.invoiceDetails.checkState == '1' && this.props.invoiceDetails.reimburseState == '0') {
 
+                    if (this.props.invoiceDetails.totalAmount < 0) {
+                        Util.showToast(Message.INVOICE_DETAIL_FLUSHED_INVOICE_REIMBURSED);
+                        return;
+                    }
+
                 if (this.props.navigation.state.params.fromNew) {
                     //新建报销单进入详情，直接跳转新建报销单页面
                     var selectedList = this.getSelectedInvoiceListToNewReimbursement();
                     this.props.selectInvoice(this.props.navigation.state.params.expenseId, selectedList);
-                    this.props.resetNewReimbursement({noInit:true});
+                    this.props.resetNewReimbursement({noInit: true});
                     return;
                 }
                 if (Platform.OS === 'android') {
                     RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                        this.props.changeState({backDialogShow: true});
                         this.createReimbursementPicker();
                         Picker.show();
                     });
                 } else {
+                    this.props.changeState({backDialogShow: true});
                     this.createReimbursementPicker();
                     Picker.show();
                 }
@@ -736,10 +747,12 @@ class InvoiceDetails extends Component {
         } else {
             if (Platform.OS === 'android') {
                 RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                    this.props.changeState({backDialogShow: true});
                     this.createReimbursementPicker();
                     Picker.show();
                 });
             } else {
+                this.props.changeState({backDialogShow: true});
                 this.createReimbursementPicker();
                 Picker.show();
             }
@@ -778,7 +791,7 @@ class InvoiceDetails extends Component {
                         </TouchableOpacity>
                     </View>
                 )
-            } else if(this.props.invoiceDetails.showReimbursementBtn){
+            } else if (this.props.invoiceDetails.showReimbursementBtn) {
                 return (
                     <View style={styles.bottomView}>
                         <TouchableOpacity onPress={()=> this.reimbursementNow()}>
@@ -799,128 +812,129 @@ class InvoiceDetails extends Component {
             bottomHeight = 120;
         }
         return (
-            <View style={styles.container}>
-                {(this.props.invoiceDetails.checkState == '0' && this.props.invoiceDetails.reimburseState != '2' && this.props.invoiceDetails.reimburseState != '3' && !this.props.navigation.state.params.fromReDetail) ?
-                    (<Header
-                        titleText={Message.INVOICE_DETAIL_TITLE}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                        rightText={Message.EDIT}
-                        rightClick={()=> {
-                            this.props.navigateEditInvoice({
-                                invoiceTypeCode: this.props.invoiceDetails.invoiceTypeCode,
-                                uuid: this.props.invoiceDetails.uuid,
-                                isFromNewReimbursement: this.props.invoiceDetails.isFromNewReimbursement,
-                                expenseId: this.props.invoiceDetails.expenseId
-                            })
-                        }}
-                        rightIconStyle={{
-                            width: ScreenUtil.scaleSize(42),
-                            height: ScreenUtil.scaleSize(42),
-                            resizeMode: 'stretch',
-                        }}
-                    />) : (
-                    <Header
-                        titleText={Message.INVOICE_DETAIL_TITLE}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                    />
-                )
-                }
-
-                <CommonLoading isShow={this.props.invoiceDetails.isLoading}/>
-                <Dialog
-                    content={Message.NEW_RE_ALREADY_IN_REIMBURSEMENT}
-                    type={'alert'}
-                    alertBtnText={Message.CONFIRM}
-                    modalVisible={this.props.invoiceDetails.alreadyInNewReimbursement}
-                    alertBtnStyle={{color: '#FFAA00',}}
-                    alertBtnClick={this.backToPrevious.bind(this)}
-                    thisComponent={this}
-                />
-                <Dialog
-                    titleText={this.props.invoiceDetails.dialogTitle}
-                    content={this.props.invoiceDetails.dialogContent}
-                    type={'confirm'}
-                    leftBtnText={Message.CANCEL}
-                    rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
-                    modalVisible={this.props.invoiceDetails.showNoPermissionDialog}
-                    leftBtnStyle={{color: '#A5A5A5',}}
-                    rightBtnStyle={{color: '#FFAA00',}}
-                    rightBtnClick={Permissions.openSettings}
-                    thisComponent={this}
-                    onClose={this.onCloseCamera.bind(this)}
-                />
-                <PopDialog
-                    showVisible={this.props.invoiceDetails.showDialog}
-                    thisComponent={this}
-                    scanClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        Permissions.checkMultiplePermissions(['camera', 'photo'])
-                            .then(response => {
-
-                                //判断是否具有相机权限，相册权限
-                                if (!Util.checkPermission(response.camera) || !Util.checkPermission(response.photo)) {
-                                    this.props.changeState({
-                                        dialogTitle: Message.AUTHORITY_SETTING,
-                                        dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
-                                        showNoPermissionDialog: true,
-                                    });
-                                    return;
-                                }
-
-                                if (this.props.navigation.state.params.isFromScan) {
-                                    setTimeout(
-                                        () => {
-                                            this.props.changeScanQrCodeState({readQrCodeEnable: true});
-                                        },
-                                        20
-                                    );
-                                    this.props.back()
-                                } else {
-                                    this.props.navigateScanQrCode()
-                                }
-                            });
-
-                    }}
-                    photoClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        setTimeout(
-                            () => {
-                                this.ocrValidationFromCamera()
-                            },
-                            100
-                        );
-
-                    }}
-                    albumClick={()=> {
-                        this.props.changeState({showDialog: false});
-                        setTimeout(
-                            () => {
-                                this.ocrValidationFromImageLibrary()
-                            },
-                            100
-                        );
-                    }}
-                    cancelClick={
-                        this.returnToInvoiceList.bind(this)
+            <SafeAreaView style={styles.container}>
+                <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                    {(this.props.invoiceDetails.checkState == '0' && this.props.invoiceDetails.reimburseState != '2' && this.props.invoiceDetails.reimburseState != '3' && !this.props.navigation.state.params.fromReDetail) ?
+                        (<Header
+                            titleText={Message.INVOICE_DETAIL_TITLE}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                            rightText={Message.EDIT}
+                            rightClick={()=> {
+                                this.props.navigateEditInvoice({
+                                    invoiceTypeCode: this.props.invoiceDetails.invoiceTypeCode,
+                                    uuid: this.props.invoiceDetails.uuid,
+                                    isFromNewReimbursement: this.props.invoiceDetails.isFromNewReimbursement,
+                                    expenseId: this.props.invoiceDetails.expenseId
+                                })
+                            }}
+                            rightIconStyle={{
+                                width: ScreenUtil.scaleSize(42),
+                                height: ScreenUtil.scaleSize(42),
+                                resizeMode: 'stretch',
+                            }}
+                        />) : (
+                        <Header
+                            titleText={Message.INVOICE_DETAIL_TITLE}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                        />
+                    )
                     }
-                />
-                {this.renderImgPreview()}
 
-                <ScrollView style={styles.sclView}>
-                    <ImageBackground source={require('./../../img/invoice/invoice_detail_bg.png')}
-                                 resizeMode='stretch'
-                                 style={{
-                                     width: deviceWidth - ScreenUtil.scaleSize(20),
-                                     height: deviceHeight - ScreenUtil.scaleSize(bottomHeight) - ScreenUtil.scaleSize(20) - ScreenUtil.scaleSize(Platform.OS == 'ios' ? 128 : 93),
-                                 }}>
-                        {this.selectTemplate()}
-                    </ImageBackground>
-                </ScrollView>
+                    <CommonLoading isShow={this.props.invoiceDetails.isLoading}/>
+                    <Dialog
+                        content={Message.NEW_RE_ALREADY_IN_REIMBURSEMENT}
+                        type={'alert'}
+                        alertBtnText={Message.CONFIRM}
+                        modalVisible={this.props.invoiceDetails.alreadyInNewReimbursement}
+                        alertBtnStyle={{color: '#FFAA00',}}
+                        alertBtnClick={this.backToPrevious.bind(this)}
+                        thisComponent={this}
+                    />
+                    <Dialog
+                        titleText={this.props.invoiceDetails.dialogTitle}
+                        content={this.props.invoiceDetails.dialogContent}
+                        type={'confirm'}
+                        leftBtnText={Message.CANCEL}
+                        rightBtnText={Message.AUTHORIZE_SET_PERMISSIONS}
+                        modalVisible={this.props.invoiceDetails.showNoPermissionDialog}
+                        leftBtnStyle={{color: '#A5A5A5',}}
+                        rightBtnStyle={{color: '#FFAA00',}}
+                        rightBtnClick={Permissions.openSettings}
+                        thisComponent={this}
+                        onClose={this.onCloseCamera.bind(this)}
+                    />
+                    <PopDialog
+                        showVisible={this.props.invoiceDetails.showDialog}
+                        thisComponent={this}
+                        scanClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            Permissions.checkMultiplePermissions(['camera', 'photo'])
+                                .then(response => {
 
-                {this.renderBottomView()}
-            </View>
+                                    //判断是否具有相机权限，相册权限
+                                    if (!Util.checkPermission(response.camera) || !Util.checkPermission(response.photo)) {
+                                        this.props.changeState({
+                                            dialogTitle: Message.AUTHORITY_SETTING,
+                                            dialogContent: Message.AUTHORIZE_CAMERA_AND_PHOTO_ALBUM,
+                                            showNoPermissionDialog: true,
+                                        });
+                                        return;
+                                    }
+                                    this.props.navigateScanQrCode()
+                                });
+
+                        }}
+                        photoClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            setTimeout(
+                                () => {
+                                    this.ocrValidationFromCamera()
+                                },
+                                100
+                            );
+
+                        }}
+                        albumClick={()=> {
+                            this.props.changeState({showDialog: false});
+                            setTimeout(
+                                () => {
+                                    this.ocrValidationFromImageLibrary()
+                                },
+                                100
+                            );
+                        }}
+                        cancelClick={
+                            this.returnToInvoiceList.bind(this)
+                        }
+                        backClick={() => this.props.changeState({showDialog: false})}
+                    />
+
+                    <BackDialog
+                        backgroundClick={(component) => {
+                            Picker.hide();
+                            component.props.changeState({backDialogShow: false});
+                        }}
+                        isShow={this.props.invoiceDetails.backDialogShow}
+                        thisComponent={this}/>
+
+                    {this.renderImgPreview()}
+
+                    <ScrollView style={styles.sclView}>
+                        <ImageBackground source={require('./../../img/invoice/invoice_detail_bg.png')}
+                                         resizeMode='stretch'
+                                         style={{
+                                             width: deviceWidth - ScreenUtil.scaleSize(20),
+                                             height: deviceHeight - ScreenUtil.scaleSize(bottomHeight) - ScreenUtil.scaleSize(20) - ScreenUtil.scaleSize(Platform.OS == 'ios' ? (Util.isIphoneX() ? 93 : 128) : 93),
+                                         }}>
+                            {this.selectTemplate()}
+                        </ImageBackground>
+                    </ScrollView>
+
+                    {this.renderBottomView()}
+                </View>
+            </SafeAreaView>
         )
     }
 }
@@ -936,14 +950,14 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
     return bindActionCreators({
         back: back,
-        selectInvoice:selectInvoice,
-        resetNewReimbursement:resetNewReimbursement,
+        selectInvoice: selectInvoice,
+        resetNewReimbursement: resetNewReimbursement,
         navigateNewReimbursement: navigateNewReimbursement,
         navigateEditInvoice: navigateEditInvoice,
-        backToInvoiceList:backToInvoiceList,
+        backToInvoiceList: backToInvoiceList,
         changeScanQrCodeState: changeScanQrCodeState,
         ocrValidation: ocrValidation,
-        invoiceCheck:invoiceCheck,
+        invoiceCheck: invoiceCheck,
         navigateScanQrCode: navigateScanQrCode,
         initData: initData,
         changeState: changeState,
@@ -957,11 +971,11 @@ export default connect(mapStateToProps, mapDispatchToProps)(InvoiceDetails);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F3F3'
+        backgroundColor: 'white'
     },
     sclView: {
         paddingVertical: ScreenUtil.scaleSize(10),
-        marginHorizontal:ScreenUtil.scaleSize(10),
+        marginHorizontal: ScreenUtil.scaleSize(10),
     },
     imageBg: {
         width: ScreenUtil.scaleSize(730),

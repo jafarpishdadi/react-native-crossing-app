@@ -16,7 +16,6 @@ import {
     View,
     StyleSheet,
     TextInput,
-    ScrollView,
     Image,
     TouchableOpacity,
     FlatList,
@@ -24,19 +23,19 @@ import {
     ListView,
     Dimensions,
 } from 'react-native';
-import {changeState} from '../../redux/actions/reimbursement/SelectCity';
+import {changeState, getAllCityList} from '../../redux/actions/reimbursement/SelectCity';
+import CommonLoading from "../../containers/common/CommonLoading";
+import CitySectionList from './CitySectionList';
 
 import Toast, {DURATION} from './ToastUtil'
-const SECTIONHEIGHT = 30;                                                          //组头字母(或者"热门")行高
-const ROWHEIGHT = 40;                                                              //普通模块行高
-const ROWHEIGHT_BOX = 40;                                                          //热门模块行高
-var totalheight = [];                                                              //每个组头及其所对应的数据总行的高度总和  的集合
-const key_hot = '热门';
-var dataSource = [];                                                               //全城市列表的数据源dataSource
-var letters =[];                                                                   //右侧字母列表(含"热门")
+import Util from "../../utils/Util";
+import {CustomStyles} from "../../css/CustomStyles";
+import SafeAreaView from "react-native-safe-area-view";
+
+const ROW_HEIGHT = 40;                                                              //普通模块行高
+const ROW_HEIGHT_BOX = 40;                                                          //热门模块行高
 const {width, height} = Dimensions.get('window');
-var that;
-const OPACITY=0.6;                                                                 //右侧点击时小弹框的透明度
+
 class SelectCity extends Component {
 
     static navigationOptions = ({navigation}) => ({
@@ -48,130 +47,77 @@ class SelectCity extends Component {
      * @param component 当前组件
      */
     onBack(component) {
+        component.props.changeState({
+            newJsonData: [],
+            selectedCityNames: [],
+            isPress: Message.CHOOSE_CITY_HOY
+        });
         component.props.back();
     }
 
     componentWillMount() {
-        //初始化页面
-
-        var getSectionData = (dataBlob, sectionID) => {
-            return sectionID;                                                        //获取组头数据(字母+"热门")
-        };
-        var getRowData = (dataBlob, sectionID, rowID) => {                            //获取行数据
-            return dataBlob[sectionID][rowID];
-        };
-
-        let ALL_CITY_LIST = this.props.state.allCityList;                         //全城市数据
-        let HOT_CITY_LIST = this.props.state.hotCityList;                         //热门城市数据
-        let dataBlob = {};                                                            //定义数据团dataBlob
-        dataBlob[key_hot] = HOT_CITY_LIST;                                            //给数据团dataBlob加入热门城市数据 dataBlob[key_hot]
-
-        ALL_CITY_LIST.map(cityJson => {                                               //按城市名称拼音的首字母分类 给数据团dataBlob加入分组城市数据(不含"热门")
-            let key = cityJson.sortLetters.toUpperCase();
-
-            if (dataBlob[key]) {
-                let subList = dataBlob[key];
-                subList.push(cityJson);
-            } else {
-                let subList = [];
-                subList.push(cityJson);
-                dataBlob[key] = subList;
-            }
-        });
-
-        let sectionIDs = Object.keys(dataBlob);                                     //获取总列表数据的 分组ID的集合sectionIDs("热门"+字母列表)
-
-        let rowIDs = sectionIDs.map(sectionID => {                                   //rowIDs 为 sectionIDs中 每个元素(也就是组头)对应的城市数据的个数个的数字的数组(从0开始，最后一个数组元素为改组数据个数-1)  的集合
-            let thisRow = [];
-            let count = dataBlob[sectionID].length;
-            for (let ii = 0; ii < count; ii++) {
-                thisRow.push(ii);
-            }
-
-            let eachheight = SECTIONHEIGHT + ROWHEIGHT * thisRow.length;              //eachheight为每组 组头及其所对应的数据总行的高度总和
-            if (sectionID === key_hot) {
-                let rowNum = (thisRow.length % 3 === 0)
-                    ? (thisRow.length / 3)
-                    : parseInt(thisRow.length / 3) + 1;
-                eachheight = SECTIONHEIGHT + ROWHEIGHT_BOX * rowNum;
-            }
-
-            totalheight.push(eachheight);
-            return thisRow;
-        });                                                                           //该方法在获取rowsID的同时也同时给 totalheight 加入后了数据
-        var ds = new ListView.DataSource({                                           //搜索结果集的数据源ds
-            rowHasChanged: (r1, r2) => r1 !== r2
-        });
-
-        let ds2 = new ListView.DataSource({                                            //全城市数据的数据源(含"热门")ds2
-            getRowData: getRowData,                                                     //获取行数据
-            getSectionHeaderData: getSectionData,                                       //获取组头数据
-            rowHasChanged: (row1, row2) => row1 !== row2,                               //行发生变化
-            sectionHeaderHasChanged: (s1, s2) => s1 !== s2                              //组头发生变化
-        });
-
-        dataSource = ds2.cloneWithRowsAndSections(dataBlob, sectionIDs, rowIDs);        //全城市列表数据源
-        letters = sectionIDs;                                                           //右侧字母列表（含热门）
-
         this.props.changeState({
-            showSearchResult: false,                                                //是否展示搜索结果标记
-            keyword: '',                                                              //搜索关键字
-            searchResultList: [],                                                    //搜索结果集合
-            value:'',                                                                  //搜索框显示的内容
-            ds: ds,                                                                     //结果集数据源
-            //dataSource: ds2.cloneWithRowsAndSections(dataBlob, sectionIDs, rowIDs),
-            //letters: sectionIDs
+            selectedCityNames: []
         })
+        if (this.props.navigation.state.params.targetCity == '') {
 
-        that = this;
+        } else {
+            let selectCityNames = [];
+            this.props.navigation.state.params.targetCity.split('/').map((city) => {
+                selectCityNames.push(city);
+            })
+            this.props.changeState({
+                selectedCityNames: selectCityNames
+            });
+        }
+    }
+
+    componentDidMount() {
+        this.props.getAllCityList();
     }
 
     //找出符合搜索条件的城市集合
     filterCityData(searchedCity) {
         let resultList = [];
         for (let i = 0; i < this.props.state.allCityList.length; i++) {
-            let item = this.props.state.allCityList[i];
-            if (item.name.indexOf(searchedCity) === 0 || item.spellName.indexOf(searchedCity) === 0) {
-                resultList.push(item);
+            let temp1 = this.props.state.allCityList[i];
+            for (let j = 0; j < temp1.citys.length; j++) {
+                let temp2 = temp1.citys[j]
+                if (temp2.cityName.indexOf(searchedCity) === 0 || temp2.initial.toUpperCase().indexOf(searchedCity.toUpperCase()) === 0) {
+                    resultList.push(temp2);
+                }
             }
         }
         return resultList;
     }
 
+
     //渲染符合搜索条件的城市列表
     renderRow(cityJson) {
-        let keyword = this.props.state.keyword;
-        let searchedCity = (
-            <Text style={{
-                color: 'red'
-            }}>{keyword}</Text>
-        );
-
-        let Name1 = '';
-        if (cityJson.name.indexOf(keyword) === 0) {
-            Name1 = (<Text>{searchedCity}{cityJson.name.replace(keyword,'')}</Text>);
-        } else {
-            Name1 = (<Text>{cityJson.name}</Text>);
-        }
-
-        let Name2 = '';
-        if (cityJson.spellName.indexOf(keyword) === 0) {
-            Name2 = (<Text>{searchedCity}{cityJson.spellName.replace(keyword,'')}</Text>);
-        } else {
-            Name2 = (
-                <Text>{cityJson.spellName}</Text>
-            );
-        }
-
         return (
             <TouchableOpacity
                 key={'list_item_' + cityJson.id}
                 style={styles.rowView}
                 onPress={() => {
-                    this.onSelectCity(cityJson)
+                    var selectedCityNames;
+                    selectedCityNames = this.props.state.selectedCityNames;
+                    var index = selectedCityNames.indexOf(cityJson.cityName)
+                    if (index == (-1) && selectedCityNames.length < 20) {
+                        selectedCityNames.push(cityJson.cityName)
+                    } else if (index == (-1) && selectedCityNames.length >= 20) {
+                        Util.showToast(Message.CHOOSE_CITY_CHECK_MOST);
+                    } else {
+                        selectedCityNames.splice(index, 1)
+                    }
+                    this.props.changeState({
+                        selectedCityNames: selectedCityNames
+                    })
                 }}>
                 <View style={styles.rowData}>
-                    <Text style={styles.rowDataText}>{Name1} / {Name2}</Text>
+                    <Text style={{
+                        color: this.props.state.selectedCityNames.indexOf(cityJson.cityName) != (-1) ? '#FFAA00' : '#666666',
+                        width: width
+                    }}>{cityJson.cityName}</Text>
                 </View>
             </TouchableOpacity>
         )
@@ -190,98 +136,74 @@ class SelectCity extends Component {
         }
     }
 
-     //当点击单个城市(即选择城市)时调用
-    onSelectCity(cityJson) {
-/*        if (this.props.state.showSearchResult) {
-            this.props.changeState({showSearchResult: false, keyword: ''});
-        }*/
-
-        alert('你选择了城市====》' + cityJson.id + '#####' + cityJson.name);
-    }
-
-
-    //点击组头列表中某一组头选项时列表数据的展示跳转至改组数据
-    _scrollTo(index, letter) {
-        this.refs.toast.close();
-        let position = 0;
-        for (let i = 0; i < index; i++) {
-            position += totalheight[i]
-        }
-        this._listView.scrollTo({y: position});
-        this.refs.toast.show(letter, DURATION.LENGTH_SHORT);
-    }
-
-
     //渲染右侧组头列表
     _renderRightLetters(letter, index) {
         return (
             <TouchableOpacity key={'letter_idx_' + index} activeOpacity={0.6} onPress={() => {
-                this._scrollTo(index, letter)
+                this.props.changeState({isPress: letter});
+                this.flatListRef.scrollToIndex({animated: false, index: index});
+                this.refs.toast.close();
+                this.refs.toast.show(letter, DURATION.LENGTH_SHORT);
             }}>
-                <View style={styles.letter}>
-                    <Text style={styles.letterText}>{letter}</Text>
+                <View style={[styles.letter,{height: index == 0 ? 5 / 100 * height : 3 / 100 * height}]}>
+                    <Text style={{
+                        width: 6.5 / 100 * width,
+                        textAlign: 'center',
+                        fontSize: ScreenUtil.setSpText(8),
+                        color: letter == this.props.state.isPress ? '#FFAA00' : '#ABABAB'
+                    }}>{letter}</Text>
                 </View>
             </TouchableOpacity>
         );
     }
 
-
-    //渲染热门模块
-    _renderListBox(cityJson, rowId) {
-        return (
-            <TouchableOpacity key={'list_item_' + cityJson.id} style={styles.rowViewBox} onPress={() => {
-                that.onSelectCity(cityJson)
-            }}>
-                <View style={styles.rowDataBox}>
-                    <Text style={styles.rowDataTextBox}>{cityJson.name}</Text>
-                </View>
-            </TouchableOpacity>
-        );
-    }
-
-    //渲染总城市数据模块
-    _renderListRow(cityJson, rowId) {
-        console.log('rowId===>' + rowId + ", cityJson====>" + JSON.stringify(cityJson));
-        if (rowId === key_hot) {
-            return that._renderListBox(cityJson, rowId);
+    /**
+     * 确定
+     */
+    onConfirm() {
+        if (this.props.state.selectedCityNames.length == 0) {
+            Util.showToast(Message.CHOOSE_CITY_CHECK_LIST);
+            return;
         }
+        if (this.props.state.selectedCityNames.length > 20) {
+            Util.showToast(Message.CHOOSE_CITY_CHECK_MOST);
+            return;
+        }
+        let selectCities = this.props.state.selectedCityNames;
+        let targetCity = selectCities[0] + '';
+        for (let i = 1; i < selectCities.length; i++) {
+            targetCity = targetCity + '/' + selectCities[i];
+        }
+        this.props.navigation.state.params.callback(targetCity);
+        this.props.changeState({
+            newJsonData: [],
+            selectedCityNames: [],
+            isPress: Message.CHOOSE_CITY_HOY,
+        });
+        this.props.back();
 
-        return (
-            <TouchableOpacity key={'list_item_' + cityJson.id} style={styles.rowView2} onPress={() => {
-                that.onSelectCity(cityJson)
-            }}>
-                <View style={styles.rowData}>
-                    <Text style={styles.rowDataText}>{cityJson.name}</Text>
-                </View>
-            </TouchableOpacity>
-        )
     }
 
-    //渲染组头的UI
-    _renderListSectionHeader(sectionData, sectionID) {
-        return (
-            <View style={styles.sectionView}>
-                <Text style={styles.sectionText}>
-                    {sectionData}
-                </Text>
-            </View>
-        );
+    _onSectionSelect = (section, index) => {
+        //跳转到某一项
+        this.flatListRef.scrollToIndex({animated: false, index: index});
     }
 
-
-    render(){
-        return(
-            <View style={{ flex:1,backgroundColor:'#F6F6F6'}}>
+    render() {
+        return (
+            <SafeAreaView style={{flex: 1, backgroundColor: '#FFFFFF'}}>
+                <CommonLoading isShow={this.props.state.isLoading}/>
                 <Header
                     titleText={Message.CHOOSE_CITY_TITLE}
                     thisComponent={this}
                     backClick={this.onBack}
                     rightText={Message.CONFIRM}
-                    rightTextStyle={{color:"#FFAA00"}}
+                    rightTextStyle={{color: "#FFAA00"}}
+                    rightClick={this.onConfirm.bind(this)}
                 />
                 <View style={{paddingHorizontal: ScreenUtil.scaleSize(30),}}>
                     <View style={styles.rowLO}>
-                        <Image source={require('./../../img/reimbursement/search_icon.png')} style={styles.selectImg} />
+                        <Image source={require('./../../img/reimbursement/search_icon.png')} style={styles.selectImg}/>
                         <TextInput ref={this.props.state.keyword}
                                    autoCapitalize="none"
                                    value={this.props.state.value}
@@ -303,41 +225,163 @@ class SelectCity extends Component {
                         />
                     </View>
                 </View>
-                <View style={styles.rowSeparator}/>
+                <View style={{
+                    backgroundColor: '#DEDEDE',
+                    height: ScreenUtil.scaleSize(1),
+                    paddingHorizontal: ScreenUtil.scaleSize(30)
+                }}/>
                 <View style={{
                     backgroundColor: 'white',
-                    alignItems:'flex-end',
-                    flex:1
+                    alignItems: 'flex-end',
+                    flex: 1
                 }}>
-                    {this.props.state.showSearchResult
-                        ? (
-                            <View style={styles.containerResult}>
+                    {this.props.state.showSearchResult ? (
+                        <View style={styles.containerResult}>
+                            {this.props.state.searchResultList.length > 0 ?
                                 <ListView
                                     enableEmptySections={true}
                                     contentContainer={styles.contentContainer}
                                     dataSource={this.props.state.ds.cloneWithRows(this.props.state.searchResultList)}
                                     renderRow={this.renderRow.bind(this)}/>
-                            </View>
-                        ) : null}
-                                                <View style={styles.container}>
-                            <View style={styles.listContainer}>
-                                <ListView ref={listView => this._listView = listView}
-                                          contentContainerStyle={styles.contentContainer}
-                                          dataSource={dataSource}
-                                          renderRow={this._renderListRow}
-                                          renderSectionHeader={this._renderListSectionHeader}
-                                          enableEmptySections={true}
-                                          initialListSize={1500}/>
-                                <View style={styles.letters}>
-                                    {letters.map((letter, index) => this._renderRightLetters(letter, index))}
+                                :
+                                <View style={{
+                                    flex: 1,
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    marginTop: ScreenUtil.scaleSize(280),
+                                }}>
+                                    <Text style={{
+                                        color: '#ABABAB',
+                                        fontSize: ScreenUtil.scaleSize(34),
+                                    }}>未搜索到对应结果</Text>
                                 </View>
-                            </View>
-                            <Toast ref="toast" position='top' positionValue={200} fadeInDuration={750} fadeOutDuration={1000}
-                                   opacity={0.8}/>
-                        </View>
-                </View>
-            </View>
+                            }
+                        </View>) : null
+                    }
 
+                    <View style={styles.container}>
+                        <View style={styles.listContainer}>
+                            <FlatList
+                                initialNumToRender={30}
+                                ref={(ref) => {
+                                    this.flatListRef = ref;
+                                }}
+                                data={this.props.state.newJsonData}
+                                extraData={this.props.state}
+                                renderItem={({item, index}) => (
+                                    <View>
+                                        {item.name == Message.CHOOSE_CITY_HOY ?
+                                            <View style={styles.contentContainer}>
+                                                <View style={styles.rowSeparator}/>
+                                                <View style={{
+                                                    paddingTop: 5,
+                                                    paddingBottom: 5,
+                                                    height: 30,
+                                                    paddingLeft: 10,
+                                                    width: width,
+                                                    backgroundColor: 'white'
+                                                }}>
+                                                    <Text style={styles.sectionText}>{item.name}</Text>
+                                                </View>
+                                                {
+                                                    item.citys.map((city, index) => {
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={'list_item_' + city.cityCode}
+                                                                style={styles.rowViewBox} onPress={() => {
+                                                                var selectedCityNames;
+                                                                selectedCityNames = this.props.state.selectedCityNames;
+                                                                var index = selectedCityNames.indexOf(city.cityName)
+                                                                if (index == (-1) && selectedCityNames.length < 20) {
+                                                                    selectedCityNames.push(city.cityName)
+                                                                } else if ((index == (-1) && selectedCityNames.length >= 20)) {
+                                                                    Util.showToast(Message.CHOOSE_CITY_CHECK_MOST);
+                                                                } else {
+                                                                    selectedCityNames.splice(index, 1)
+                                                                }
+                                                                this.props.changeState({
+                                                                    selectedCityNames: selectedCityNames
+                                                                })
+                                                            }}>
+                                                                <View
+                                                                    style={[styles.rowDataBox, {borderColor: this.props.state.selectedCityNames.indexOf(city.cityName) != (-1) ? '#FFAA00' : '#A5A5A5'}]}>
+                                                                    <Text style={{
+                                                                        paddingTop: Platform.OS == 'ios' ? ScreenUtil.scaleSize(4) : 0,
+                                                                        marginTop: 5,
+                                                                        flex: 1,
+                                                                        fontSize: ScreenUtil.setSpText(8),
+                                                                        height: 20,
+                                                                        color: this.props.state.selectedCityNames.indexOf(city.cityName) != (-1) ? '#FFAA00' : '#666666'
+                                                                    }}>{city.cityName}</Text>
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                        )
+                                                    })
+                                                }
+                                            </View>
+                                            :
+                                            <View style={styles.contentContainer}>
+                                                <View style={styles.sectionView}>
+                                                    <Text style={styles.sectionText}>{item.name}</Text>
+                                                </View>
+                                                {item.citys.map((city, index) => {
+                                                        return (
+                                                            <View style={{
+                                                                paddingBottom: 2,
+                                                                backgroundColor: 'white',
+                                                                paddingLeft: 10,
+                                                            }}>
+                                                                <TouchableOpacity onPress={() => {
+                                                                    var selectedCityNames;
+                                                                    selectedCityNames = this.props.state.selectedCityNames;
+                                                                    var index = selectedCityNames.indexOf(city.cityName)
+                                                                    if (index == (-1) && selectedCityNames.length < 20) {
+                                                                        selectedCityNames.push(city.cityName)
+                                                                    } else if ((index == (-1) && selectedCityNames.length >= 20)) {
+                                                                        Util.showToast(Message.CHOOSE_CITY_CHECK_MOST);
+                                                                    } else {
+                                                                        selectedCityNames.splice(index, 1)
+                                                                    }
+                                                                    this.props.changeState({
+                                                                        selectedCityNames: selectedCityNames
+                                                                    })
+                                                                }}>
+                                                                    <Text style={{
+                                                                        paddingTop: 10,
+                                                                        color: this.props.state.selectedCityNames.indexOf(city.cityName) != (-1) ? '#FFAA00' : '#666666',
+                                                                        width: width,
+                                                                        fontSize: ScreenUtil.setSpText(9),
+                                                                        marginBottom: ScreenUtil.scaleSize(21),
+                                                                    }}>{city.cityName}</Text>
+                                                                </TouchableOpacity>
+                                                                <View style={[CustomStyles.separatorLine,{
+                                                                    backgroundColor: index == (item.citys.length - 1) ? 'white' : '#DEDEDE',
+                                                                    marginRight: 9.5 / 100 * width,
+                                                                }]}/>
+                                                            </View>
+                                                        )
+                                                    }
+                                                )
+                                                }
+                                            </View>}
+                                    </View>
+                                )}
+                            />
+{/*                            <View style={styles.letters}>
+                                {this.props.state.letters.map((letter, index) => this._renderRightLetters(letter, index))}
+                            </View>*/}
+
+                            <CitySectionList
+                                sections={this.props.state.letters}
+                                onSectionSelect={this._onSectionSelect}/>
+
+                        </View>
+                        <Toast ref="toast" position='top' positionValue={200} fadeInDuration={750}
+                               fadeOutDuration={1000}
+                               opacity={0.8}/>
+                    </View>
+                </View>
+            </SafeAreaView>
         )
     }
 }
@@ -351,7 +395,8 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
     return bindActionCreators({
         back: back,
-        changeState:changeState,
+        changeState: changeState,
+        getAllCityList: getAllCityList,
     }, dispatch);
 }
 
@@ -378,14 +423,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9F9F9',
     },
     rowSeparator: {
-        backgroundColor: '#DEDEDE',
-        height: ScreenUtil.scaleSize(25),
-        paddingHorizontal: ScreenUtil.scaleSize(30)
-    },
-    rowSeparator2: {
-        backgroundColor: '#DEDEDE',
-        height: ScreenUtil.scaleSize(50),
-        paddingHorizontal: ScreenUtil.scaleSize(30)
+        backgroundColor: '#F3F3F3',
+        height: ScreenUtil.scaleSize(20),
+        paddingHorizontal: ScreenUtil.scaleSize(30),
+        flex: 1
     },
     rowLabel: {
         fontSize: ScreenUtil.setSpText(10),
@@ -425,12 +466,7 @@ const styles = StyleSheet.create({
         borderRadius: ScreenUtil.scaleSize(8),
     },
     inputBox: {
-        //height: Platform.OS === 'ios'
-        //? 30
-        //: 40,
-        //marginLeft: 5,
-        //marginRight: 5,
-        height: Dimensions.get('window').height * 5/100,
+        height: Dimensions.get('window').height * 5 / 100,
         flexDirection: 'row',
         backgroundColor: '#FFFFFF'
     },
@@ -463,7 +499,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         backgroundColor: 'white',
         width: deviceWidth,
-        height: deviceHeight,
+        height: Dimensions.get('window').height * 82 / 100,
+        marginBottom: 10
     },
     rowView: {
         height: 40,
@@ -473,7 +510,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.5
     },
     rowView2: {
-        height: ROWHEIGHT,
+        height: ROW_HEIGHT,
         paddingLeft: 10,
         paddingRight: 10,
         borderBottomColor: '#F4F4F4',
@@ -481,14 +518,16 @@ const styles = StyleSheet.create({
     },
     rowData: {
         paddingTop: 10,
-        paddingBottom: 2
+        paddingBottom: 2,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: width
     },
     rowDataText: {
-        color: 'gray',
+        color: '#666666',
         width: width
     },
     containerIndexListView: {
-        // paddingTop: 50,
         flex: 1,
         flexDirection: 'column',
         backgroundColor: '#F4F4F4',
@@ -502,51 +541,46 @@ const styles = StyleSheet.create({
     },
     letters: {
         position: 'absolute',
-        height: height,
         top: 0,
         bottom: 0,
         right: 0,
         backgroundColor: 'transparent',
-        // justifyContent: 'flex-start',
-        // alignItems: 'flex-start'
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        width: 6.5 / 100 * width,
     },
     selectImg: {
         width: ScreenUtil.scaleSize(36),
         height: ScreenUtil.scaleSize(36),
         resizeMode: Image.resizeMode.contain,
-        // marginLeft: ScreenUtil.scaleSize(30)
     },
     rowLO: {
         height: ScreenUtil.scaleSize(80),
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF'
     },
     container: {
-        // paddingTop: 50,
         flex: 1,
         flexDirection: 'column',
         backgroundColor: '#F4F4F4',
     },
     listContainer: {
-        height: Dimensions.get('window').height * 80/100,
+        height: Dimensions.get('window').height * 82 / 100,
         marginBottom: 10
     },
     rowViewBox: {
-        height: ROWHEIGHT_BOX,
-        width: (width - 30) / 3,
+        height: ROW_HEIGHT_BOX,
+        width: (width - 33) / 3,
         flexDirection: 'row',
         backgroundColor: '#ffffff'
     },
     rowDataBox: {
-        borderWidth: 1,
-        borderColor: '#DBDBDB',
+        borderWidth: ScreenUtil.scaleSize(1),
         marginTop: 5,
         marginBottom: 5,
         paddingBottom: 2,
-        marginLeft: 10,
-        marginRight: 10,
+        marginLeft: ScreenUtil.scaleSize(45),
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center'
@@ -554,7 +588,8 @@ const styles = StyleSheet.create({
     rowDataTextBox: {
         marginTop: 5,
         flex: 1,
-        height: 20
+        height: 20,
+        color: '#666666'
     },
     sectionView: {
         paddingTop: 5,
@@ -562,21 +597,15 @@ const styles = StyleSheet.create({
         height: 30,
         paddingLeft: 10,
         width: width,
-        backgroundColor: '#F4F4F4'
+        backgroundColor: '#F3F3F3'
     },
     sectionText: {
         color: '#666666',
-        fontWeight: 'bold'
+        fontSize: ScreenUtil.setSpText(9)
     },
     letter: {
-        height: height * 2 / 100,
-        width: width * 4 / 50,
+        height: height * 3.0 / 100,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    letterText: {
-        textAlign: 'center',
-        fontSize: height * 1.1 / 50,
-        color: '#000000'
     },
 });

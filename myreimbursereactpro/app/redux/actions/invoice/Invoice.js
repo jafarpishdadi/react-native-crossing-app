@@ -551,11 +551,6 @@ export const refreshNoReimbursementData = (selectedDateStr) => {
             rows: 20,
             isSyn: 'Y',
         }, dispatch, function (ret, status) {
-            dispatch(changeState({
-                isRefreshing: false,
-            }));
-            var invoiceState = getState().Invoice;
-            var lastInvoiceData = invoiceState.dataWithoutReimbursement;
             if (status) {
                 if (ret.status) {
                     dispatch(changeState({
@@ -563,11 +558,7 @@ export const refreshNoReimbursementData = (selectedDateStr) => {
                         noReimbursementPage: 1,
                         noReimbursementLoadMore: ret.data.length == 20,
                     }));
-                    dispatch(loadInvoiceTotalData());
-                    // 更新底部状态
-                    // if (invoiceState.showCheckbox) {
-                    //     updateInvoiceData(dispatch, lastInvoiceData, ret.data, invoiceState);
-                    // }
+                    dispatch(refreshInReimbursementData());
                 } else {
                     dispatch(changeState({
                         dataWithoutReimbursement: [],
@@ -581,57 +572,6 @@ export const refreshNoReimbursementData = (selectedDateStr) => {
     }
 };
 
-export const updateInvoiceData = (dispatch, oldDataList, newDataList, invoiceState) => {
-    var selectedItemIDCount;//单行选中的发票ID数
-    var allItemCount = 0;        //列表所有发票数
-    var isSelectedAll;      //是否选择全选按钮
-    var selectedItem;       //单行选中的发票
-    var allItem;            //列表所有发票
-    var selectedItemAmount; //单行选中的发票金额数
-    var allItemAmount;      //列表所有发票金额
-    var totalAmount         //所有发票金额数值
-    var dataWithoutReimbursement;   //未报销发票数组
-    var status;
-    var selectedDateStr;
-
-    selectedItemIDCount = invoiceState.selectedItemIDCount;
-    isSelectedAll = invoiceState.isSelectedAll;
-    selectedItem = invoiceState.selectedItem;
-    allItem = invoiceState.allItem;
-    selectedItemAmount = invoiceState.selectedItemAmount;
-    allItemAmount = invoiceState.allItemAmount;
-    totalAmount = 0;//初始化,防止undefined
-    status = invoiceState.reimbursementStatus;
-    dataWithoutReimbursement = newDataList;
-
-    for (var k = 0; k < dataWithoutReimbursement.length; k++) {
-        if (!(Util.contains(['01', '02', '04', '10', '11'], dataWithoutReimbursement[k].invoiceTypeCode)
-            && dataWithoutReimbursement[k].checkState == 0) && status != 2 && status != 3) {
-            allItemCount += parseInt(dataWithoutReimbursement[k].invoiceCount);
-            totalAmount += parseFloat(dataWithoutReimbursement[k].totalAmount);
-        }
-    }
-
-    if (selectedItemIDCount == allItemCount && isSelectedAll) {
-        selectedItem = [].concat(allItem);
-        selectedItemAmount = totalAmount;
-        dispatch(changeState({
-            isSelectedAll: true,
-            selectedItemIDCount: allItemCount,
-            selectedItem: selectedItem,
-            selectedItemAmount: selectedItemAmount
-        }));
-    } else {
-        selectedItem = [];
-        dispatch(changeState({
-            isSelectedAll: false,
-            selectedItemIDCount: 0,
-            selectedItem: selectedItem,
-            selectedItemAmount: 0
-        }));
-    }
-};
-
 /**
  * 刷新报销中发票列表
  * @param requestData
@@ -639,9 +579,6 @@ export const updateInvoiceData = (dispatch, oldDataList, newDataList, invoiceSta
  */
 export const refreshInReimbursementData = (selectedDateStr) => {
     return dispatch => {
-        dispatch(changeState({
-            isRefreshing: true,
-        }));
         return HttpUtil.postJson(API.GET_INVOICE_LIST_DATA, {
             invoiceTime: selectedDateStr,
             reimburseState: 2,
@@ -650,9 +587,6 @@ export const refreshInReimbursementData = (selectedDateStr) => {
             rows: 20,
             isSyn: 'Y',
         }, dispatch, function (ret, status) {
-            dispatch(changeState({
-                isRefreshing: false,
-            }));
             if (status) {
                 if (ret.status) {
                     dispatch(changeState({
@@ -660,7 +594,7 @@ export const refreshInReimbursementData = (selectedDateStr) => {
                         inReimbursementPage: 1,
                         inReimbursementLoadMore: ret.data.length == 20,
                     }));
-                    dispatch(loadInvoiceTotalData());
+                    dispatch(refreshCompletedReimbursementData());
                 } else {
                     dispatch(changeState({
                         dataWithinReimbursement: [],
@@ -681,9 +615,6 @@ export const refreshInReimbursementData = (selectedDateStr) => {
  */
 export const refreshCompletedReimbursementData = (selectedDateStr) => {
     return dispatch => {
-        dispatch(changeState({
-            isRefreshing: true,
-        }));
         return HttpUtil.postJson(API.GET_INVOICE_LIST_DATA, {
             invoiceTime: selectedDateStr,
             reimburseState: 3,
@@ -692,9 +623,6 @@ export const refreshCompletedReimbursementData = (selectedDateStr) => {
             rows: 20,
             isSyn: 'Y',
         }, dispatch, function (ret, status) {
-            dispatch(changeState({
-                isRefreshing: false,
-            }));
             if (status) {
                 if (ret.status) {
                     dispatch(changeState({
@@ -848,7 +776,8 @@ export const loadInvoiceTotalData = () => {
                     bxzzs: ret.data.bxzzs,
                     ybxje: ret.data.ybxje,
                     ybxzs: ret.data.ybxzs,
-                    isLoading: false
+                    isLoading: false,
+                    isRefreshing: false,
                 }))
             }
         })
@@ -893,7 +822,7 @@ export const loadInvoiceDelete = (uuid) => {
                     dispatch(changeState({isLoading: false}));
                     Util.showToast(Message.INVOICE_LIST_DELETE_INVOICE_WITHIN_USING_TIP);
                 }
-            }else {
+            } else {
                 dispatch(changeState({isLoading: false}));
             }
         })

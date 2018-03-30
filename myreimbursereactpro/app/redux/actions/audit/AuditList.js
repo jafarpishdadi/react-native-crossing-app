@@ -25,26 +25,49 @@ export const initData = () => {
             alreadyApprovedLoadMore: true,
             showFilter: false,
             copyToMe: [],
+            applyType: '',
+            unapprovedCount: 0,
         }))
     }
 }
 
 export const loadData = () => {
-    return dispatch => {
+    return (dispatch, getState) => {
         dispatch(changeState({
             isLoading: true,
         }))
-        dispatch(loadUnapproved())
-    }
-}
-
-export const loadUnapproved = () => {
-    return dispatch => {
-        return HttpUtil.postJson(API.GET_APPROVAL_LIST, {
+        dispatch(getUnapprovedCount())
+        dispatch(loadUnapproved({
             flag: 0,
             page: 1,
             rows: 5,
+            formTypeCode: getState().AuditList.applyType,
+        }))
+    }
+}
+
+export const getUnapprovedCount = () => {
+    return (dispatch, getState) => {
+        return HttpUtil.postJson(API.GET_UNAPPROVED_COUNT, {
+            //formTypeCode: getState().AuditList.applyType,
+            formTypeCode: '',
         }, dispatch, function(ret, status) {
+            if (status) {
+                if (ret.status) {
+                    dispatch(changeState({
+                        unapprovedCount: ret.data,
+                    }))
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const loadUnapproved = (requestData, single) => {
+    return (dispatch, getState) => {
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
             if (status) {
                 if (ret.status) {
                     if (ret.data != null) {
@@ -58,7 +81,18 @@ export const loadUnapproved = () => {
                             unapprovedLoadMore: false
                         }))
                     }
-                    dispatch(loadAlreadyApproved())
+                    if (!single) {
+                        dispatch(loadAlreadyApproved({
+                            flag: 1,
+                            page: 1,
+                            rows: 5,
+                            formTypeCode: getState().AuditList.applyType,
+                        }))
+                    } else {
+                        dispatch(changeState({
+                            isLoading: false,
+                        }))
+                    }
                 } else {
                     Util.showToast(ret.message);
                     dispatch(changeState({
@@ -74,16 +108,9 @@ export const loadUnapproved = () => {
     }
 }
 
-export const loadAlreadyApproved = () => {
-    return dispatch => {
-        return HttpUtil.postJson(API.GET_APPROVAL_LIST, {
-            flag: 1,
-            page: 1,
-            rows: 5,
-        }, dispatch, function(ret, status) {
-            dispatch(changeState({
-                isLoading: false,
-            }))
+export const loadAlreadyApproved = (requestData, single) => {
+    return (dispatch, getState) => {
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
             if (status) {
                 if (ret.status) {
                     if (ret.data != null) {
@@ -97,6 +124,52 @@ export const loadAlreadyApproved = () => {
                             alreadyApprovedLoadMore: false,
                         }))
                     }
+                    if (!single) {
+                        dispatch(loadCopyList({
+                            flag: 2,
+                            page: 1,
+                            rows: 5,
+                            formTypeCode: getState().AuditList.applyType,
+                        }))
+                    } else {
+                        dispatch(changeState({
+                            isLoading: false,
+                        }))
+                    }
+                } else {
+                    Util.showToast(ret.message);
+                    dispatch(changeState({
+                        isLoading: false,
+                    }))
+                }
+            } else {
+                dispatch(changeState({
+                    isLoading: false,
+                }))
+            }
+        })
+    }
+}
+
+export const loadCopyList = (requestData) => {
+    return dispatch => {
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
+            dispatch(changeState({
+                isLoading: false,
+            }))
+            if (status) {
+                if (ret.status) {
+                    if (ret.data != null) {
+                        dispatch(changeState({
+                            copyToMe: ret.data,
+                            copyToMeLoadMore: ret.data.length == 5,
+                        }))
+                    } else {
+                        dispatch(changeState({
+                            copyToMe: [],
+                            copyToMeLoadMore: false,
+                        }))
+                    }
                 } else {
                     Util.showToast(ret.message);
                 }
@@ -105,16 +178,13 @@ export const loadAlreadyApproved = () => {
     }
 }
 
-export const refreshUnApproved = () => {
+export const refreshUnApproved = (requestData) => {
     return dispatch => {
         dispatch(changeState({
             isRefreshing: true,
         }))
-        return HttpUtil.postJson(API.GET_APPROVAL_LIST, {
-            flag: 0,
-            page: 1,
-            rows: 5,
-        }, dispatch, function(ret, status) {
+        dispatch(getUnapprovedCount())
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
             dispatch(changeState({
                 isRefreshing: false,
             }))
@@ -138,16 +208,12 @@ export const refreshUnApproved = () => {
     }
 }
 
-export const refreshAlreadyApproved = () => {
+export const refreshAlreadyApproved = (requestData) => {
     return dispatch => {
         dispatch(changeState({
             isRefreshing: true,
         }))
-        return HttpUtil.postJson(API.GET_APPROVAL_LIST, {
-            flag: 1,
-            page: 1,
-            rows: 5,
-        }, dispatch, function(ret, status) {
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
             dispatch(changeState({
                 isRefreshing: false,
             }))
@@ -163,6 +229,35 @@ export const refreshAlreadyApproved = () => {
                         alreadyApproved: [],
                         alreadyApprovedPage:1,
                         alreadyApprovedLoadMore: false,
+                    }))
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const refreshCopyList = (requestData) => {
+    return dispatch => {
+        dispatch(changeState({
+            isRefreshing: true,
+        }))
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
+            dispatch(changeState({
+                isRefreshing: false,
+            }))
+            if (status) {
+                if (ret.status) {
+                    dispatch(changeState({
+                        copyToMe: ret.data ? ret.data : [],
+                        copyToMePage:1,
+                        copyToMeLoadMore: true,
+                    }))
+                } else {
+                    dispatch(changeState({
+                        copyToMe: [],
+                        copyToMePage:1,
+                        copyToMeLoadMore: false,
                     }))
                     Util.showToast(ret.message);
                 }
@@ -213,6 +308,32 @@ export const  loadMoreAlreadyApproved = (requestData, alreadyApproved) => {
                             alreadyApproved: alreadyApproved.concat(ret.data),
                             alreadyApprovedPage: requestData.page,
                             alreadyApprovedLoadMore: ret.data.length == 5,
+                        }))
+                    }
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+export const loadMoreCopy = (requestData, copyList) => {
+    return dispatch => {
+        dispatch(changeState({
+            showLoading: true
+        }));
+        return HttpUtil.postJson(API.GET_APPROVAL_LIST, requestData, dispatch, function(ret, status) {
+            dispatch(changeState({
+                showLoading: false
+            }));
+            if (status) {
+                if (ret.status) {
+                    if (ret.data != null) {
+                        dispatch(changeState({
+                            copyToMe: copyList.concat(ret.data),
+                            copyToMePage: requestData.page,
+                            copyToMeLoadMore: ret.data.length == 5,
                         }))
                     }
                 } else {

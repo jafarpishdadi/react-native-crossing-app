@@ -10,6 +10,7 @@ import Message from '../../../constant/Message';
 import Store from 'react-native-simple-store';
 import {changeState as changeHomePageState} from '../../actions/homePage/HomePage';
 import {changeState as invoiceChangeState} from '../../actions/invoice/Invoice';
+import {changeState as changeAppState} from '../../actions/App';
 
 export const loginAction = (requestData) => {
     return dispatch => {
@@ -28,6 +29,12 @@ export const loginAction = (requestData) => {
                         dispatch(navigateOpenEnterpriseWithParams({whereComeFrom: 'Login'}))
                     } else if (ret.data.turnType === 'home') {
                         dispatch(navigateMainScreen())
+                        dispatch(changeAppState({
+                            currentTab: 'HomePage'
+                        }))
+                        dispatch(changeHomePageState({
+                            showOtherMessage: true,
+                        }))
                     } else if (ret.data.turnType === 'forbidLogin') {
                         Util.showToast(Message.ENTERPRISE_HAS_BEEN_FORBIDDEN);
                     }

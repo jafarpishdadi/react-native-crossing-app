@@ -14,7 +14,7 @@ const initialState = {
 	isRefreshing: false,        //刷新中
 	showLoading: false,         //上拉加载时，是否显示加载信息,如‘正在加载...’
 	spState: '',        //报销单状态
-
+	viewRef: null,
 }
 
 const reimbursementListReducer = (state = initialState, action) => {

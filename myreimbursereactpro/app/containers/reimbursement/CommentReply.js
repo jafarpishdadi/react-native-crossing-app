@@ -34,6 +34,8 @@ import Dialog from "./../common/Dialog";
 const Permissions = require('react-native-permissions');
 var OpenFileSystemModule = NativeModules.OpenFileSystem;
 var PreviewModule = NativeModules.PreviewModule;
+import SafeAreaView from "react-native-safe-area-view";
+import InputScrollView from "react-native-input-scroll-view";
 
 class CommentReply extends Component {
 	static navigationOptions = ({navigation}) => ({
@@ -76,7 +78,7 @@ class CommentReply extends Component {
 		}
 		component.props.addComment({
 			commentContent: {
-				expenseNo: params.expenseNo,
+				billNo: params.expenseNo,
 				taskId: params.taskId,
 				toUserId: params.toUserId,
 				procinstId: params.procinstId,
@@ -85,7 +87,7 @@ class CommentReply extends Component {
 				comment: component.props.state.comment,
 			},
 			commentFileTypes: this.props.state.attachmentList
-		})
+		}, params.templateNo)
 	}
 
 	/**
@@ -145,7 +147,12 @@ class CommentReply extends Component {
 						//选择了常用按钮
 					}
 					else {
-						const type = response.uri.substring(response.uri.lastIndexOf(".") + 1, response.uri.length).toLowerCase()
+						let type;
+						if (Platform.OS != 'ios') {
+							type = response.originalType;
+						} else {
+							type = response.uri.substring(response.uri.lastIndexOf(".") + 1, response.uri.length).toLowerCase()
+						}
 						if (!Util.contains(['png', 'img', 'jpg', 'bmp'], type)) {
 							Util.showToast(Message.NEW_RE_FILE_TYPE);
 							return;
@@ -156,7 +163,7 @@ class CommentReply extends Component {
 						}
 						const source = {
 							uri: response.uri,
-							fileName: response.fileName,
+							fileName: Platform.OS != 'ios' ? response.originalName : response.fileName,
 							fileSize: response.fileSize,
 							fileType: response.type,
 							userType: 0,
@@ -234,7 +241,7 @@ class CommentReply extends Component {
 		const fileArr = this.props.state.attachmentList.filter(item => item.userType == 1);
 		return(
 			<TouchableWithoutFeedback onPress={dismissKeyboard}>
-				<View style={styles.container}>
+				<SafeAreaView style={styles.container}>
 					<CommonLoading isShow={this.props.state.isLoading}/>
 					<Header
 						thisComponent={this}
@@ -259,6 +266,9 @@ class CommentReply extends Component {
 						thisComponent={this}
 						onClose={this.onCloseCamera.bind(this)}
 					/>
+                    <InputScrollView style={styles.sclView} keyboardShouldPersistTaps={'handled'}
+                                     keyboardOffset={80}
+                                     ref="scroll">
 					<TextInput
 						style={styles.input}
 						placeholder={Message.REIMBURSEMENT_REJECT_TEXT_PLACEHOLDER}
@@ -285,7 +295,7 @@ class CommentReply extends Component {
 							dismissKeyboard();
 							const arr = this.props.state.attachmentList.filter(item => item.userType == 0);
 							if (arr.length < 5) {
-								this.openImagePicker();
+                                    this.openImagePicker();
 							} else {
 								Util.showToast(Message.REIMBURSEMENT_IMG_COUNT)
 							}
@@ -409,7 +419,7 @@ class CommentReply extends Component {
 								<View style={{
 									flexDirection: 'row',
 									height: ScreenUtil.scaleSize(80),
-									alignItems: 'center'
+									alignItems: 'center',
 								}}>
 									<TouchableOpacity style={{
 										position: 'absolute',
@@ -462,7 +472,8 @@ class CommentReply extends Component {
 							)}
 						/>
 					</View>
-				</View>
+					</InputScrollView>
+				</SafeAreaView>
 			</TouchableWithoutFeedback>
 		)
 	}
@@ -489,7 +500,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(CommentReply);
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: '#F3F3F3'
+		backgroundColor: 'white'
 	},
 	input: {
 		fontSize: ScreenUtil.setSpText(9),
@@ -513,5 +524,10 @@ const styles = StyleSheet.create({
 		fontSize: ScreenUtil.setSpText(9),
 		color: '#666666',
 		flex: 1,
-	}
+	},
+    sclView: {
+        //flex: 1,
+        backgroundColor: '#F6F6F6',
+		marginBottom: ScreenUtil.scaleSize(100),
+    },
 })

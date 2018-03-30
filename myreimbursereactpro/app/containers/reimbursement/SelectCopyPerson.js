@@ -18,76 +18,47 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
     BackHandler,
-    PixelRatio
+    PixelRatio,
+    RefreshControl,
+    ActivityIndicator
 } from "react-native";
-import ScreenUtil, {deviceWidth, deviceHeight} from "../../utils/ScreenUtil";
+import ScreenUtil from "../../utils/ScreenUtil";
 import Util from "../../utils/Util";
 import Message from "../../constant/Message";
 import Header from "../../containers/common/CommonHeader";
 import CommonLoading from "../../containers/common/CommonLoading";
-import Dialog from "./../common/Dialog";
-import {
-    back,
-} from "../../redux/actions/navigator/Navigator";
-import {changeState as changeAppState} from "../../redux/actions/App";
+import {back} from "../../redux/actions/navigator/Navigator";
 import {
     changeState,
     initData,
     loadData,
-    selectCopyperson,
-} from "./../../redux/actions/reimbursement/SelectCopyPerson"
+    refreshData,
+    loadMorePerson,
+    refreshPersonList,
+    searchPersonList
+} from "./../../redux/actions/reimbursement/SelectCopyPerson";
+import Store from "react-native-simple-store";
+import SafeAreaView from "react-native-safe-area-view";
 
-var RNBridgeModule = NativeModules.RNBridgeModule;
-var searchResult = [];
-var selectData = [];
 class SelectCopyPerson extends Component {
     static navigationOptions = ({navigation}) => ({
         header: null
     });
 
-    constructor(props) {
-        super(props);
+    componentWillMount() {
+        this.props.initData();
     }
 
     componentDidMount() {
-        this.props.initData();
-        if (this.props.navigation.state.params && !Util.checkListIsEmpty(this.props.navigation.state.params.selectCopyPerson)) {
-            this.props.changeState({
-                selectCopyPersonList: this.props.navigation.state.params.selectCopyPerson
-            })
-        }
-        this.props.loadData();
-    }
-
-    //确定按钮
-    confirmCopyPerson() {
-        var data = this.props.state.firstList;
-        this.selectData(data);
-        if (Util.checkListIsEmpty(selectData)) {
-            Util.showToast(Message.NEW_TRAVEL_APPLY_SELECT_COPY_PERSON);
-        } else {
-            this.props.state({selectData});
-            selectData = [];
-            this.props.back();
-        }
-
-    }
-
-    //获取选择的人员
-    selectData(data) {
-        for (var i = 0, j = data.length; i < j; i++) {
-            if (data[i].deptList && data[i].deptList.length > 0) {
-                this.selectData(data[i].deptList);
+        const that = this;
+        Store.get('user').then((user) => {
+            if (user) {
+                that.props.changeState({
+                    currentUserId: user.userNo,
+                })
             }
-            if (data[i].personList && data[i].personList.length > 0) {
-                var personList = data[i].personList;
-                for (var x = 0, y = personList.length; x < y; x++) {
-                    if (personList[x].isSelected) {
-                        selectData.push(personList[x]);
-                    }
-                }
-            }
-        }
+        })
+        this.props.loadData(this.props.navigation.state.params.selectedPersonList);
     }
 
     /**
@@ -95,261 +66,373 @@ class SelectCopyPerson extends Component {
      * @param component 当前组件
      */
     onBack(component) {
+        const dismissKeyboard = require('dismissKeyboard');
+        dismissKeyboard();
         component.props.back();
     }
 
     /**
-     * 关闭弹出框
+     * 确定
      */
-    _closeModal() {
-        this.props.changeState({
-            saveModalVisible: false,
-        });
-    }
-
-    /**
-     * 保存取消
-     * @private
-     */
-    _cancelClick() {
+    onConfirm() {
+        // if (this.props.state.selectedPersonList.length == 0) {
+        //     if (this.props.navigation.state.params.code == 0) {
+        //         Util.showToast(Message.SELECT_COPY_PERSON_NO_MSG);
+        //     } else {
+        //         Util.showToast(Message.SELECT_TOGETHER_PERSON_NO_MSG);
+        //     }
+        //     return;
+        // }
+        this.props.navigation.state.params.callback(this.props.state.selectedPersonList);
+        //this.props.navigation.state.params.callback(this.getPersonName(), this.getPersonId());
         this.props.back();
     }
 
     /**
-     * 确定保存
-     * @private
+     * 渲染部门列表
+     * @param item
      */
-    _ensureSaveClick() {
-        this.confirmCopyPerson();
-    }
+    renderDep(item) {
+        return (
+            item.map((item) => {
+                return (
+                    <View style={{
+                        marginLeft: ScreenUtil.scaleSize(20),
+                        //marginTop: ScreenUtil.scaleSize(20),
+                    }}>
+                        <TouchableOpacity onPress={() => {
+                            let selectedDep;
+                            if (Util.contains(this.props.state.selectedDepList, item.orgDepId)) {
+                                selectedDep = Util.removeByValue(this.props.state.selectedDepList, item.orgDepId);
+                            } else {
+                                selectedDep = this.props.state.selectedDepList;
+                                selectedDep.push(item.orgDepId);
+                            }
+                            this.props.changeState({
+                                selectedDepList: selectedDep.concat(),
+                            })
+                        }}>
+                            <View style={{
+                                height: ScreenUtil.scaleSize(60),
+                                justifyContent: 'flex-end',
+                            }}>
+                                <View style={{
+                                    height: ScreenUtil.scaleSize(40),
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                }}>
+                                    {
+                                        Util.contains(this.props.state.selectedDepList, item.orgDepId) ? (
+                                            <Image source={require('../../img/copyperson/down.png')}
+                                                   style={{
+                                                       width: ScreenUtil.scaleSize(19),
+                                                       height: ScreenUtil.scaleSize(19),
+                                                       resizeMode: 'contain',
+                                                   }}/>
+                                        ) : (
+                                            <Image source={require('../../img/copyperson/right.png')}
+                                                   style={{
+                                                       width: ScreenUtil.scaleSize(19),
+                                                       height: ScreenUtil.scaleSize(19),
+                                                       resizeMode: 'contain',
+                                                   }}/>
+                                        )
+                                    }
 
-    //递归关闭子目录
-    recursiveClose(item) {
-        if (item.deptList && item.deptList.length > 0) {
-            item.isOpen = false;
-            for (var i = 0, j = item.deptList.length; i < j; i++) {
-                item.deptList[i].isOpen = false;
-                if (item.deptList[i].personList && item.deptList[i].personList.length > 0) {
-                    item.deptList[i].isOpen = false;
-                }
-                if (item.deptList[i].deptList && item.deptList[i].deptList.length > 0) {
-                    this.recursiveClose(item.deptList[i]);
-                }
-            }
-        }
-        if (item.personList && item.personList.length > 0) {
-            item.isOpen = false;
-        }
-        return item;
-    }
-
-    //递归遍历部门
-    recursiveData(item, list) {
-        for (var i = 0, j = list.length; i < j; i++) {
-            if (item.name == list[i].name) {
-                list[i].isOpen = item.isOpen ? false : true;
-                if (!list[i].isOpen) {
-                    list[i] = this.recursiveClose(list[i]);
-                }
-            }
-
-            if (list[i].deptList && list[i].deptList.length > 0) {
-                var deptList = list[i].deptList;
-                for (var x = 0, y = deptList.length; x < y; x++) {
-                    if (item.name == deptList[x].name) {
-                        deptList[x].isOpen = item.isOpen ? false : true;
-                        if (!deptList[x].isOpen) {
-                            deptList[x] = this.recursiveClose(deptList[x]);
+                                    <Text style={{
+                                        marginLeft: ScreenUtil.scaleSize(10),
+                                        fontSize: ScreenUtil.setSpText(9),
+                                        color: '#666666',
+                                        width: ScreenUtil.scaleSize(400),
+                                    }} numberOfLines={1}>{item.orgDepName}</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                        {
+                            Util.contains(this.props.state.selectedDepList, item.orgDepId) ? (
+                                item.user ? (
+                                    item.user.map((item) => (
+                                        <TouchableOpacity
+                                            disabled={this.props.navigation.state.params.code == 1 && item.userNo == this.props.state.currentUserId}
+                                            style={{
+                                                //marginTop: ScreenUtil.scaleSize(20),
+                                                marginLeft: ScreenUtil.scaleSize(40),
+                                                height: ScreenUtil.scaleSize(70),
+                                                justifyContent: 'flex-end',
+                                            }}
+                                            onPress={() => {
+                                                let selectedPersonId = [];
+                                                let selectedPerson = [];
+                                                if (Util.contains(this.props.state.selectedPersonIdList, item.userNo)) {
+                                                    selectedPersonId = Util.removeByValue(this.props.state.selectedPersonIdList, item.userNo);
+                                                    selectedPerson = this.props.state.selectedPersonList.filter((person) => person.userNo != item.userNo);
+                                                } else {
+                                                    if (this.props.navigation.state.params.code == 0) {
+                                                        selectedPersonId.push(item.userNo);
+                                                        selectedPerson.push(item);
+                                                    } else {
+                                                        selectedPersonId = this.props.state.selectedPersonIdList;
+                                                        selectedPerson = this.props.state.selectedPersonList;
+                                                        if (selectedPersonId.length < 30) {
+                                                            selectedPersonId.push(item.userNo);
+                                                            selectedPerson.push(item);
+                                                        } else {
+                                                            Util.showToast(Message.MAX_TRAVEL_PARTNER_COUNT);
+                                                        }
+                                                    }
+                                                }
+                                                this.props.changeState({
+                                                    selectedPersonIdList: selectedPersonId.concat(),
+                                                    selectedPersonList: selectedPerson.concat(),
+                                                })
+                                            }}>
+                                            <View style={{
+                                                height: ScreenUtil.scaleSize(40),
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                            }}>
+                                                <Image source={
+                                                    (this.props.navigation.state.params.code == 1 && item.userNo == this.props.state.currentUserId) ? (
+                                                        require('../../img/invoice/disabled_hooked.png')
+                                                    ) : (
+                                                        Util.contains(this.props.state.selectedPersonIdList, item.userNo) ?
+                                                            require('../../img/copyperson/selected.png') :
+                                                            require('../../img/copyperson/oval_unselected.png')
+                                                    )
+                                                }
+                                                       style={{
+                                                           width: ScreenUtil.scaleSize(40),
+                                                           height: ScreenUtil.scaleSize(40),
+                                                           resizeMode: 'contain',
+                                                       }}/>
+                                                <Text style={{
+                                                    marginLeft: ScreenUtil.scaleSize(20),
+                                                    fontSize: ScreenUtil.setSpText(9),
+                                                    color: '#ABABAB',
+                                                }}>{item.userName}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))
+                                ) : null
+                            ) : null
                         }
-                    } else {
-                        if (deptList[x].deptList && deptList[x].deptList.length > 0) {
-                            this.recursiveData(item, deptList[x].deptList);
-                        } else {
-                            if (deptList[x].personList && deptList[x].personList) {
-                                var personList = deptList[x].personList;
-                                for (var a = 0, b = personList.length; a < b; a++) {
-                                    if (item.name == personList[a].name) {
-                                        personList[a].isSelected = item.isSelected ? false : true;
+
+                        {
+                            Util.contains(this.props.state.selectedDepList, item.orgDepId) ? (
+                                item.childrenList ? this.renderDep(item.childrenList) : null
+                            ) : null
+                        }
+                    </View>
+                )
+            })
+        )
+    }
+
+    /**
+     * 树形菜单页面<View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+     */
+    renderTreePage() {
+        return (
+            <ScrollView
+                style={{
+                    paddingHorizontal: ScreenUtil.scaleSize(30),
+                }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={this.props.state.isRefreshing}
+                        onRefresh={() => {
+                            this.props.refreshData()
+                        }}
+                    />
+                }
+                showsVerticalScrollIndicator={false}
+            >
+                {
+                    this.renderDep(this.props.state.depTree)
+                }
+                <View style={{height: ScreenUtil.scaleSize(20)}}/>
+            </ScrollView>
+
+        )
+    }
+
+    /**
+     * 搜索结果页面
+     */
+    renderSearchPage() {
+        return (
+            Util.checkListIsEmpty(this.props.state.searchPersonList) ? (
+                <View style={{
+                    height: ScreenUtil.scaleSize(48),
+                    marginTop: ScreenUtil.scaleSize(240),
+                    alignSelf: 'center',
+                    justifyContent: 'center',
+                }}>
+                    <Text style={{
+                        fontSize: ScreenUtil.setSpText(11),
+                        color: '#ABABAB'
+                    }}>{Message.SELECT_COPY_PERSON_NO_RESULT}</Text>
+                </View>
+            ) : (
+                <View style={{
+                    paddingHorizontal: ScreenUtil.scaleSize(30),
+                    marginTop: ScreenUtil.scaleSize(20),
+                    flex: 1,
+                }}>
+                    <FlatList
+                        onEndReached={() => {
+                            if (this.props.state.loadMore) {
+                                this.props.changeState({loadMore: false});
+                                this.props.loadMorePerson({
+                                    name: this.props.state.searchValue,
+                                    page: this.props.state.page + 1,
+                                    rows: 50
+                                }, this.props.state.searchPersonList)
+                            }
+                        }}
+                        onRefresh={() => {
+                            this.props.refreshPersonList({
+                                name: this.props.state.searchValue,
+                                page: 1,
+                                rows: 50
+                            })
+                        }}
+                        refreshing={this.props.state.isRefreshing}
+                        data={this.props.state.searchPersonList}
+                        onEndReachedThreshold={0.8}
+                        renderItem={({item, index}) => (
+                            <TouchableOpacity style={{marginTop: ScreenUtil.scaleSize(20)}} onPress={() => {
+                                let selectedPersonId = [];
+                                let selectedPerson = [];
+                                if (Util.contains(this.props.state.selectedPersonIdList, item.userNo)) {
+                                    selectedPersonId = Util.removeByValue(this.props.state.selectedPersonIdList, item.userNo);
+                                    selectedPerson = this.props.state.selectedPersonList.filter((person) => person.userNo != item.userNo);
+                                } else {
+                                    if (this.props.navigation.state.params.code == 0) {
+                                        selectedPersonId.push(item.userNo);
+                                        selectedPerson.push(item);
+                                    } else {
+                                        selectedPersonId = this.props.state.selectedPersonIdList;
+                                        selectedPerson = this.props.state.selectedPersonList;
+                                        selectedPersonId.push(item.userNo);
+                                        selectedPerson.push(item);
                                     }
                                 }
-                                deptList[x].personList = personList;
-                            }
+                                this.props.changeState({
+                                    selectedPersonIdList: selectedPersonId.concat(),
+                                    selectedPersonList: selectedPerson.concat(),
+                                })
+                            }}>
+                                <View style={{
+                                    height: ScreenUtil.scaleSize(40),
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                }}>
+                                    <Image source={
+                                        (this.props.navigation.state.params.code == 1 && item.userNo == this.props.state.currentUserId) ? (
+                                            require('../../img/invoice/disabled_hooked.png')
+                                        ) : (
+                                            Util.contains(this.props.state.selectedPersonIdList, item.userNo) ?
+                                                require('../../img/copyperson/selected.png') :
+                                                require('../../img/copyperson/oval_unselected.png')
+                                        )
+                                    }
+                                           style={{
+                                               width: ScreenUtil.scaleSize(40),
+                                               height: ScreenUtil.scaleSize(40),
+                                               resizeMode: 'contain',
+                                           }}/>
+                                    <Text style={{
+                                        color: '#666666',
+                                        fontSize: ScreenUtil.setSpText(9),
+                                        marginLeft: ScreenUtil.scaleSize(20),
+                                    }}>{item.userName + '  (' + item.phone + ')'}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        ListFooterComponent={
+                            (this.props.state.showLoading) ?
+                                <View style={{
+                                    flex: 1, flexDirection: 'row',
+                                    alignSelf: 'center',
+                                    width: ScreenUtil.scaleSize(280),
+                                    paddingVertical: ScreenUtil.scaleSize(10)
+                                }}>
+                                    <View style={{flex: 1, padding: 0, margin: 0, width: ScreenUtil.scaleSize(25)}}>
+                                        <ActivityIndicator
+                                            animating={this.props.state.showLoading}
+                                            style={{height: ScreenUtil.scaleSize(20)}}
+                                            size="small"/>
+                                    </View>
+                                    <View style={{
+                                        flex: 1, padding: 0, margin: 0, height: ScreenUtil.scaleSize(20),
+                                        alignSelf: 'flex-start', justifyContent: 'center'
+                                    }}>
+                                        <Text style={{fontSize: ScreenUtil.setSpText(8), color: '#666666'}}>
+                                            {Message.INVOICE_LIST_LOADING}
+                                        </Text>
+                                    </View>
+                                </View> : <View/>
                         }
-                    }
-                }
-                list[i].deptList = deptList;
-            }
-            if (list[i].personList && list[i].personList.length > 0) {
-                var personList = list[i].personList;
-                for (var x = 0, y = personList.length; x < y; x++) {
-                    if (item.name == personList[x].name) {
-                        personList[x].isSelected = item.isSelected ? false : true;
-                        list[i].personList = personList;
-                    }
-                }
-            }
-        }
-        return list;
-    }
-
-    /**
-     * 展开关闭一级目录
-     * @param item
-     */
-    openAndCloseFirst(item) {
-        var firstList = this.props.state.firstList;
-        this.props.changeState({
-            firstList: this.recursiveData(item, firstList)
-        })
-    }
-
-    /**
-     * 渲染一级目录
-     * @param item   列表项
-     * @param index  下标
-     */
-    renderFirstListItem(item, index) {
-        return (
-            <View style={{paddingHorizontal: ScreenUtil.scaleSize(30), marginTop: ScreenUtil.scaleSize(20)}}>
-                <TouchableOpacity onPress={() => {
-                    this.openAndCloseFirst(item);
-                }}>
-                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                        {item.isOpen ?
-                            <Image source={require('./../../img/copyperson/down.png')} style={styles.rightDownImg}/>
-                            :
-                            <Image source={require('./../../img/copyperson/right.png')} style={styles.rightImg}/>
-                        }
-                        <Text style={styles.rowText}>{item.name}</Text>
-                    </View>
-                </TouchableOpacity>
-                {
-                    item.isOpen   //判断是否为展开状态
-                        ?
-                        (
-                            item.deptList ?
-                                (Util.checkListIsEmpty(item.deptList)
-                                    ?
-                                    null
-                                    :
-                                    item.deptList.map((sItem, sIndex) => this.renderFirstListItem(sItem, sIndex)))
-                                :
-                                (Util.checkListIsEmpty(item.personList)
-                                    ?
-                                    null
-                                    :
-                                    item.personList.map((sItem, sIndex) => this.renderPersonListItem(sItem, sIndex)))
-                        )
-                        :
-                        null
-                }
-            </View>
+                    />
+                </View>
+            )
         )
-    }
-
-    //
-    selectPerson(item) {
-        var firstList = this.props.state.firstList;
-        this.props.changeState({
-            firstList: this.recursiveData(item, firstList)
-        })
-    }
-
-    /**
-     * 渲染人员列表
-     * @param item
-     * @param index
-     * @returns {XML}
-     */
-    renderPersonListItem(item, index) {
-        return (
-            <View style={{paddingHorizontal: ScreenUtil.scaleSize(30), marginTop: ScreenUtil.scaleSize(20)}}>
-                <TouchableOpacity onPress={() => {
-                    this.selectPerson(item);
-                }}>
-                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                        {item.isSelected ?
-                            <Image source={require('./../../img/copyperson/selected.png')}
-                                   style={styles.rightPersonImg}/>
-                            :
-                            <Image source={require('./../../img/copyperson/oval_unselected.png')}
-                                   style={styles.rightPersonImg}/>}
-
-                        <Text style={styles.rowPersonText}>{item.name}</Text>
-                    </View>
-                </TouchableOpacity>
-            </View>
-        )
-    }
-
-    //搜索
-    searchData(text) {
-        Util.showToast(text);
     }
 
     render() {
+        const title = this.props.navigation.state.params.code == 0 ? Message.SELECT_COPY_PERSON_TITLE : Message.SELECT_TOGETHER_PERSON_TITLE;
         const dismissKeyboard = require('dismissKeyboard');
+        const page = this.props.state.searchValue ? this.renderSearchPage() : this.renderTreePage();
         return (
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={[styles.container]}>
-                    <Header
-                        titleText={Message.SELECT_COPY_PERSON_TITLE}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                        rightText={Message.CONFIRM}
-                        rightClick={this.confirmCopyPerson.bind(this)}
-                        rightTextStyle={{
-                            fontSize: ScreenUtil.setSpText(9),
-                            color: '#FFAA00',
-                        }}
-                        backControl={false}
-                    />
-                    <Dialog
-                        content={Message.NEW_TRAVEL_IS_APPLY_COPY_PERSON}
-                        type={'confirm'}
-                        leftBtnText={Message.CANCEL}
-                        rightBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.saveModalVisible}
-                        leftBtnStyle={{color: '#A5A5A5',}}
-                        rightBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal.bind(this)}
-                        leftBtnClick={this._cancelClick.bind(this)}
-                        rightBtnClick={this._ensureSaveClick.bind(this)}
-                        thisComponent={this}
-                    />
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30),}}>
-                        <View style={styles.row}>
-                            <Image source={require('./../../img/copyperson/search.png')} style={styles.selectImg}/>
-                            <TextInput
-                                editable={true}
-                                placeholder={Message.SELECT_COPY_PERSON_SEARCH}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                style={{
-                                    flex: 1,
-                                    textAlign: 'left',
-                                    marginLeft: ScreenUtil.scaleSize(30),
-                                    fontSize: ScreenUtil.setSpText(9),
-                                    color: '#666666',
-                                    textAlignVertical: 'center',
-                                    padding: 0,
-                                }}
-                                onChangeText={(text) => {
-                                    this.searchData(text);
-                                }}
-                            />
-                        </View>
-                        <View style={[styles.rowSeparator]}/>
-                    </View>
 
-                    <ScrollView ref="scroll" style={{flex: 1, paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        {Util.checkListIsEmpty(this.props.state.firstList) ?
-                            null
-                            :
-                            this.props.state.firstList.map((item, index) => this.renderFirstListItem(item, index))}
-                    </ScrollView>
+            <SafeAreaView style={styles.container}>
+                <CommonLoading isShow={this.props.state.isLoading}/>
+                <Header
+                    titleText={title}
+                    thisComponent={this}
+                    backClick={this.onBack}
+                    rightText={Message.CONFIRM}
+                    rightTextStyle={{color: '#FFAA00'}}
+                    rightClick={this.onConfirm.bind(this)}
+                />
+                <View style={styles.search}>
+                    <Image source={require('../../img/copyperson/search.png')} style={styles.searchImg}/>
+                    <TextInput
+                        style={{
+                            marginLeft: ScreenUtil.scaleSize(30),
+                            fontSize: ScreenUtil.setSpText(9),
+                            padding: 0,
+                            color: '#666666',
+                            flex: 1,
+                        }}
+                        placeholderTextColor="#ABABAB"
+                        placeholder={Message.SELECT_COPY_PERSON_SEARCH}
+                        underlineColorAndroid="transparent"
+                        onChangeText={(text) => {
+                            this.props.changeState({
+                                searchValue: text,
+                            });
+                            if (text) {
+                                this.props.searchPersonList({
+                                    name: text,
+                                    page: 1,
+                                    rows: 50,
+                                })
+                            }
+                        }}
+                        returnKeyType={'done'}
+                        value={this.props.state.searchValue}
+                    />
                 </View>
-            </TouchableWithoutFeedback>
+                <View style={styles.separateLine}/>
+
+                {
+                    page
+                }
+
+
+            </SafeAreaView>
 
         )
 
@@ -359,8 +442,6 @@ class SelectCopyPerson extends Component {
 function mapStateToProps(state) {
     return {
         state: state.SelectCopyPerson,
-        nav: state.nav,
-        appState: state.App,
     }
 }
 
@@ -370,8 +451,10 @@ function mapDispatchToProps(dispatch) {
         initData: initData,
         changeState: changeState,
         loadData: loadData,
-        selectCopyperson: selectCopyperson,
-        changeAppState: changeAppState,
+        refreshData: refreshData,
+        loadMorePerson: loadMorePerson,
+        refreshPersonList: refreshPersonList,
+        searchPersonList: searchPersonList,
     }, dispatch)
 }
 
@@ -382,44 +465,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-    rowSeparator: {
-        backgroundColor: '#DEDEDE',
-        height: 1 / PixelRatio.get(),
-        paddingHorizontal: ScreenUtil.scaleSize(30)
-    },
-    row: {
+    search: {
         height: ScreenUtil.scaleSize(80),
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        paddingHorizontal: ScreenUtil.scaleSize(30),
     },
-    selectImg: {
-        width: ScreenUtil.scaleSize(40),
+    searchImg: {
         height: ScreenUtil.scaleSize(40),
-        resizeMode: Image.resizeMode.contain,
-        // marginLeft: ScreenUtil.scaleSize(30)
-    },
-    rightDownImg: {
-        width: ScreenUtil.scaleSize(19),
-        height: ScreenUtil.scaleSize(8),
-        resizeMode: Image.resizeMode.contain,
-    },
-    rightImg: {
-        width: ScreenUtil.scaleSize(8),
-        height: ScreenUtil.scaleSize(19),
-    },
-    rowText: {
-        color: '#666666',
-        fontSize: ScreenUtil.setSpText(9),
-        marginLeft: ScreenUtil.scaleSize(10)
-    },
-    rowPersonText: {
-        color: '#ABABAB',
-        fontSize: ScreenUtil.setSpText(9),
-        marginLeft: ScreenUtil.scaleSize(10)
-    },
-    rightPersonImg: {
         width: ScreenUtil.scaleSize(40),
-        height: ScreenUtil.scaleSize(40),
-        resizeMode: Image.resizeMode.contain,
+        resizeMode: 'contain'
+    },
+    separateLine: {
+        height: 1 / PixelRatio.get(),
+        backgroundColor: '#DEDEDE',
+        marginHorizontal: ScreenUtil.scaleSize(30)
     }
 })

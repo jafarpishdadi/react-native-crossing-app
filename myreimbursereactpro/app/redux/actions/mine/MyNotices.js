@@ -1,14 +1,15 @@
 /**
  * Created by richard.ji on 2017/11/1.
  */
-
-import * as types from '../../../constant/ActionTypes';
-import HttpUtil from '../../../network/HttpUtil';
-import API from '../../../utils/API';
-import Util from '../../../utils/Util';
-import Message from '../../../constant/Message';
-import {navigateReimbursementDetail} from '../navigator/Navigator';
-import Toast from "react-native-root-toast";
+import {NativeModules} from "react-native";
+import * as types from "../../../constant/ActionTypes";
+import HttpUtil from "../../../network/HttpUtil";
+import API from "../../../utils/API";
+import Util from "../../../utils/Util";
+import Message from "../../../constant/Message";
+import {navigateReimbursementDetail, navigateTravelApplyDetail, navigateLoanOrderDetail} from "../navigator/Navigator";
+import {changeState as changeHomePageState, loadCompanyData} from '../../actions/homePage/HomePage';
+var RNBridgeModule = NativeModules.RNBridgeModule;
 
 export const changeState = (state) => {
     return {
@@ -83,18 +84,36 @@ export const updateMessageStatus = (requestData, callback) => {
  * @param requestData
  * @returns {function(*)}
  */
-export const checkApprovalUserAction = (requestData, callback) => {
+export const checkApprovalUserAction = (requestData, requestTemplatNo, callback) => {
     return dispatch => {
         return HttpUtil.postJson(API.CHECK_IS_APPROVAL_USER, requestData, dispatch, function (ret, status) {
             if (status) {
                 if (ret.status) {
-                    dispatch(navigateReimbursementDetail({
-                        formId: requestData.expenseNo,
-                        isApprovalUser: ret.data.isApprovalUser,
-                        taskId: ret.data.taskId,
-                        taskDefKey: ret.data.taskDefKey,
-                        source: "notice"
-                    }));
+                    if (requestTemplatNo == '100004') {
+                        dispatch(navigateTravelApplyDetail({
+                            travelApplyDetail: requestData.expenseNo,
+                            isApprovalUser: ret.data.isApprovalUser,
+                            taskId: ret.data.taskId,
+                            taskDefKey: ret.data.taskDefKey,
+                            source: "notice"
+                        }));
+                    } else if (requestTemplatNo == '100003') {
+                        dispatch(navigateLoanOrderDetail({
+                            formId: requestData.expenseNo,
+                            isApprovalUser: ret.data.isApprovalUser,
+                            taskId: ret.data.taskId,
+                            taskDefKey: ret.data.taskDefKey,
+                            source: "notice"
+                        }));
+                    } else if (requestTemplatNo == '100001' || requestTemplatNo == '1' || requestTemplatNo == '') {
+                        dispatch(navigateReimbursementDetail({
+                            formId: requestData.expenseNo,
+                            isApprovalUser: ret.data.isApprovalUser,
+                            taskId: ret.data.taskId,
+                            taskDefKey: ret.data.taskDefKey,
+                            source: "notice"
+                        }));
+                    }
                     callback();
                 } else {
                     Util.showToast(ret.message);
@@ -165,6 +184,28 @@ export const loadMoreMyNotices = (requestData, messageData) => {
                             loadMore: false,
                         }))
                     }
+                } else {
+                    Util.showToast(ret.message);
+                }
+            }
+        })
+    }
+}
+
+/**
+ * 7.1.12 点击首页铃铛修改角标数接口
+ * @returns {function(*)}
+ */
+export const updateBadges = () => {
+    return dispatch => {
+        return HttpUtil.postJson(API.UPDATE_SUBSCRIPT, {}, dispatch, function (ret, status) {
+            if (status) {
+                if (ret.status) {
+                    dispatch(changeHomePageState({
+                        unreadMessageCount: parseInt(ret.data.userSubscriptNum),
+                    }));
+                    dispatch(loadCompanyData(true));
+                    RNBridgeModule.updateBadge(ret.data.appSubscriptNum)
                 } else {
                     Util.showToast(ret.message);
                 }

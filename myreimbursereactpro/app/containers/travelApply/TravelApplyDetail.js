@@ -21,17 +21,17 @@ import {
     ScrollView,
     BackHandler,
     Animated,
+    Keyboard,
 } from "react-native";
-import ScreenUtil, {deviceHeight, deviceWidth} from "../../utils/ScreenUtil";
+import ScreenUtil, {deviceHeight} from "../../utils/ScreenUtil";
 import Message from "../../constant/Message";
 import Header from "../common/CommonHeader";
 import InputDialog from "../common/InputDialog";
 import CommonLoading from "../common/CommonLoading";
+import API from "../../utils/API";
 import Dialog from "../common/Dialog";
 import Store from "react-native-simple-store";
-import {
-    back,
-} from "../../redux/actions/navigator/Navigator";
+import {back, navigateReimbursementReply} from "../../redux/actions/navigator/Navigator";
 import {changeState as changeAppState} from "../../redux/actions/App";
 import Util from "../../utils/Util";
 import {
@@ -39,7 +39,13 @@ import {
     initData,
     loadData,
     editTravelApplyDetail,
-} from "../../redux/actions/travelApply/TravelApplyDetail"
+    operateCancel,
+    operateApproval,
+    addComment,
+    sendEmail
+} from "../../redux/actions/travelApply/TravelApplyDetail";
+import {CustomStyles} from "../../css/CustomStyles";
+import SafeAreaView from "react-native-safe-area-view";
 var PreviewModule = NativeModules.PreviewModule;
 
 class TravelApplyDetail extends Component {
@@ -53,6 +59,32 @@ class TravelApplyDetail extends Component {
 
     componentWillMount() {
         this.props.initData();
+        //监听键盘弹出事件
+        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShowHandler.bind(this));
+        //监听键盘隐藏事件
+        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHideHandler.bind(this));
+    }
+
+    //键盘弹出事件响应
+    keyboardDidShowHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: ScreenUtil.scaleSize(150),
+            }
+        ).start();
+    }
+
+    //键盘隐藏事件响应
+    keyboardDidHideHandler(event) {
+        Animated.timing(
+            this.props.state.dialogTop,
+            {
+                duration: 200,
+                toValue: (deviceHeight - ScreenUtil.scaleSize(502)) / 2,
+            }
+        ).start();
     }
 
     componentDidMount() {
@@ -146,7 +178,7 @@ class TravelApplyDetail extends Component {
                 iconImage = require('../../img/reimbursement/cancel.png');
                 break;
             case '2':
-                iconImage = require('../../img/reimbursement/reject.png');
+                iconImage = require('../../img/reimbursement/rejection.png');
                 break;
             case '4':
                 iconImage = require('../../img/reimbursement/pass.png');
@@ -178,35 +210,40 @@ class TravelApplyDetail extends Component {
      * 渲染底部操作
      */
     renderBottom() {
-        return (
-            <View style={{
-                backgroundColor: '#FFFFFF',
-                opacity: 0.9,
-                height: ScreenUtil.scaleSize(120),
-                borderTopWidth: ScreenUtil.scaleSize(1),
-                borderTopColor: '#DEDEDE',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-around'
-            }}>
-                <TouchableOpacity onPress={this.openRejectDialog.bind(this)}>
-                    <Image source={require('../../img/reimbursement/refuse.png')}
-                           style={{
-                               height: ScreenUtil.scaleSize(74),
-                               width: ScreenUtil.scaleSize(311),
-                               resizeMode: 'stretch',
-                           }}/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={this.operateAgree.bind(this)}>
-                    <Image source={require('../../img/reimbursement/agree.png')}
-                           style={{
-                               height: ScreenUtil.scaleSize(74),
-                               width: ScreenUtil.scaleSize(311),
-                               resizeMode: 'stretch',
-                           }}/>
-                </TouchableOpacity>
-            </View>
-        )
+        if (this.props.navigation.state.params.source == 'unapproved' ||
+            (this.props.navigation.state.params.source == 'notice' && this.props.navigation.state.params.isApprovalUser)) {
+            return (
+                <View style={{
+                    backgroundColor: '#FFFFFF',
+                    opacity: 0.9,
+                    height: ScreenUtil.scaleSize(120),
+                    borderTopWidth: ScreenUtil.scaleSize(1),
+                    borderTopColor: '#DEDEDE',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-around'
+                }}>
+                    <TouchableOpacity onPress={this.openRejectDialog.bind(this)}>
+                        <Image source={require('../../img/reimbursement/refuse.png')}
+                               style={{
+                                   height: ScreenUtil.scaleSize(74),
+                                   width: ScreenUtil.scaleSize(311),
+                                   resizeMode: 'stretch',
+                               }}/>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={this.operateAgree.bind(this)}>
+                        <Image source={require('../../img/reimbursement/agree.png')}
+                               style={{
+                                   height: ScreenUtil.scaleSize(74),
+                                   width: ScreenUtil.scaleSize(311),
+                                   resizeMode: 'stretch',
+                               }}/>
+                    </TouchableOpacity>
+                </View>
+            )
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -231,7 +268,14 @@ class TravelApplyDetail extends Component {
      * 确定驳回
      */
     operateReject(component) {
-        Util.showToast("确认驳回")
+        component.props.operateApproval({
+            state: '2',
+            billNo: component.props.state.applyNo,
+            procinstId: component.props.state.procinstId,
+            taskId: component.props.navigation.state.params.taskId,
+            taskDefKey: component.props.navigation.state.params.taskDefKey,
+            operateComment: component.props.state.operateComment,
+        })
         //清空驳回原因内容
         this.props.changeState({operateComment: ''});
     }
@@ -240,15 +284,13 @@ class TravelApplyDetail extends Component {
      * 同意
      */
     operateAgree() {
-        Util.showToast("同意")
-        /*this.props.operateApproval({
-         state: '4',
-         expenseNo: this.props.state.expenseNo,
-         taskId: this.props.navigation.state.params.taskId,
-         taskDefKey: this.props.navigation.state.params.taskDefKey,
-         procinstId: this.props.state.procinstId,
-         uuidList: this.props.state.invoiceUUIDList,
-         })*/
+        this.props.operateApproval({
+            state: '4',
+            billNo: this.props.state.applyNo,
+            taskId: this.props.navigation.state.params.taskId,
+            taskDefKey: this.props.navigation.state.params.taskDefKey,
+            procinstId: this.props.state.procinstId,
+        })
     }
 
     /**
@@ -260,6 +302,13 @@ class TravelApplyDetail extends Component {
             setTimeout(
                 () => {
                     var timestamp = (new Date()).valueOf();
+                    PreviewModule.previewDocument(API.PRINT, component.props.state.token, JSON.stringify({
+                        expenseNo: component.props.state.applyNo,
+                        procinstId: component.props.state.procinstId,
+                        templateNo: component.props.state.templateNo,
+                    }), '', timestamp + '.pdf', (value)=> {
+                        component.props.changeState({isLoading: false});
+                    })
                 },
                 500
             );
@@ -279,7 +328,12 @@ class TravelApplyDetail extends Component {
             this.props.changeState({
                 showEmailDialog: false,
             })
-            Util.showToast("发送邮件")
+            this.props.sendEmail({
+                expenseNo: this.props.state.applyNo,
+                email: this.props.state.email,
+                procinstId: this.props.state.procinstId,
+                templateNo: this.props.state.templateNo,
+            })
         } else {
             Util.showToast(Message.EMAIL_ERROR);
         }
@@ -313,17 +367,17 @@ class TravelApplyDetail extends Component {
             this.props.changeState({showCommentTip: true, commentContent: ''});
             Util.showToast(Message.REIMBURSEMENT_EMPTY_COMMENT_CONTENT);
         } else {
-            /*component.props.addComment({
-             commentContent: {
-             expenseNo: component.props.state.expenseNo,
-             taskId: item.taskId,
-             toUserId: (component.props.state.currentUserId == component.props.state.createUserId) ? item.userId : component.props.state.createUserId,
-             procinstId: item.procinstId,
-             pid: item.pid ? item.id : 'root',
-             taskKey: item.taskKey,
-             comment: this.props.state.commentContent,
-             }
-             })*/
+            component.props.addComment({
+                commentContent: {
+                    billNo: component.props.state.applyNo,
+                    taskId: item.taskId,
+                    toUserId: (component.props.state.currentUserId == component.props.state.createUserId) ? item.userId : component.props.state.createUserId,
+                    procinstId: item.procinstId,
+                    pid: item.pid ? item.id : 'root',
+                    taskKey: item.taskKey,
+                    comment: this.props.state.commentContent,
+                }
+            })
             this.props.changeState({showCommentDialog: false});
         }
     }
@@ -341,17 +395,109 @@ class TravelApplyDetail extends Component {
             selectedStartDate: data.applyStartDate,
             selectedEndDate: data.applyEndDate,
             travelDays: data.travelDays,
-            expectedCostAmount: data.expectedCostAmount,
+            expectedCostAmount: data.expectedCostAmount ? parseFloat(data.expectedCostAmount).toFixed(2) : '',
             peerPerple: data.peerPerple,
+            peerPersonList: component.getPeerPersonList(data),
+            copyPersonList: component.getCopyPersonList(data),
             attachmentList: data.attachmentList,
             applyStatus: data.applyStatus,
             targetCity: data.targetCity,
             attachmentIDList: [],     //删除的报销单附件ID集合
             attachmentURLList: [],     //删除的申请单附件URL集合
             titleText: data.applyStatus === "0" ? Message.NEW_TRAVEL_APPLY_EDIT_TITLE : Message.NEW_TRAVEL_APPLY_TITLE,
+            travelApplyNo: data.applyNo,
         }
         component.props.editTravelApplyDetail(JSON.parse(JSON.stringify(requestData)));
     }
+
+    /**
+     * 渲染评论或回复按钮
+     */
+    renderCommentButton(item) {
+        if (this.props.state.currentUserId == this.props.state.createUserId) {
+            return (
+                <TouchableOpacity onPress={() => {
+                    this.gotoReplyPage(item)
+                }}>
+                    <Text style={{
+                        width: ScreenUtil.scaleSize(250),
+                        fontSize: ScreenUtil.setSpText(7),
+                        color: '#FFAA00',
+                    }}>{Message.REPLY}</Text>
+                </TouchableOpacity>
+            )
+        } else {
+            return (
+                <TouchableOpacity onPress={() => {
+                    this.openCommentDialog(item)
+                }}>
+                    <Text style={{
+                        width: ScreenUtil.scaleSize(250),
+                        fontSize: ScreenUtil.setSpText(7),
+                        color: '#FFAA00',
+                    }}>{Message.COMMENT}</Text>
+                </TouchableOpacity>
+            )
+        }
+    }
+
+    gotoReplyPage(item) {
+        this.props.changeState({
+            currentCommentItem: item,
+        })
+        this.props.navigateReimbursementReply({
+            expenseNo: this.props.state.applyNo,
+            taskId: item.taskId,
+            toUserId: (this.props.state.currentUserId == this.props.state.createUserId) ? item.userId : this.props.state.createUserId,
+            procinstId: item.procinstId,
+            pid: item.pid ? item.id : 'root',
+            taskKey: item.taskKey,
+            templateNo: this.props.state.templateNo,
+        })
+    }
+
+    /**
+     * 组装同行人item数组
+     */
+    getPeerPersonList(data) {
+        if(Util.checkIsEmptyString(data.travelPartnerId)){
+            return [];
+        }
+        var idList = data.travelPartnerId.split(',');
+        var peerPersonList = [];
+        if (idList.length > 0) {
+            var nameList = data.peerPerple.split(',');
+            for (var i = 0; i < idList.length; i++) {
+                var item = {};
+                item.userNo = idList[i];
+                item.userName = nameList[i];
+                peerPersonList.push(item);
+            }
+        }
+        return peerPersonList;
+    }
+
+    /**
+     * 组装抄送人item数组
+     */
+    getCopyPersonList(data) {
+        if(Util.checkIsEmptyString(data.ccUid)){
+            return [];
+        }
+        var idList = data.ccUid.split(',')
+        var copyPersonList = [];
+        if (idList.length > 0) {
+            var nameList = data.ccName.split(',');
+            for (var i = 0; i < idList.length; i++) {
+                var item = {};
+                item.userNo = idList[i];
+                item.userName = nameList[i];
+                copyPersonList.push(item);
+            }
+        }
+        return copyPersonList;
+    }
+
 
     /**
      * 打开确认撤回对话框
@@ -380,7 +526,11 @@ class TravelApplyDetail extends Component {
      * 撤销
      */
     operateCancel(component) {
-        Util.showToast("撤销")
+        component.props.operateCancel({
+            state: '1',
+            billNo: component.props.state.applyNo,
+            procinstId: component.props.state.procinstId,
+        })
     }
 
     renderApplicationDate(date) {
@@ -507,6 +657,19 @@ class TravelApplyDetail extends Component {
                        resizeMode: 'stretch',
                    }}/>
         )
+    }
+
+    /**
+     * 文件名过长显示
+     */
+    getFileName(fileName) {
+        const index = fileName.lastIndexOf(".");
+        const suffix = fileName.substring(index + 1);
+        let name = fileName.substring(0, index);
+        if (name.length > 14) {
+            name = name.substring(0, 14);
+        }
+        return name + '...' + suffix;
     }
 
     /**
@@ -705,7 +868,6 @@ class TravelApplyDetail extends Component {
                     height: ScreenUtil.scaleSize(40),
                     alignItems: 'center',
                     flexDirection: 'row',
-                    //marginTop: ScreenUtil.scaleSize(index == 0 ? 40 : 0),
                 }}>
                     <Image source={icon}
                            style={{
@@ -720,11 +882,14 @@ class TravelApplyDetail extends Component {
                     <Text style={{
                         color: color,
                         fontSize: ScreenUtil.setSpText(9),
-                        //marginLeft: ScreenUtil.scaleSize(30),
                         flex: 1,
                     }}>{operate}</Text>
                     {
-                        (item.operate == '3') ? (
+                        (item.userId == this.props.state.currentUserId &&
+                        this.props.state.createUserId != this.props.state.currentUserId &&
+                        item.operate == '3' && Util.checkIsEmptyString(item.operateComment) &&
+                        (item.bizCommentExtList == null || item.bizCommentExtList.length == 0) &&
+                        this.props.navigation.state.params.source != 'approved') ? (
                             <TouchableOpacity onPress={() => {
                                 this.openCommentDialog(item)
                             }}>
@@ -747,6 +912,18 @@ class TravelApplyDetail extends Component {
         )
     }
 
+    reFormPeerPeople(oldPeerPeople) {
+        let newPeerPeople = '';
+        oldPeerPeople.split(',').map((person,index) => {
+            if(index == 0) {
+                newPeerPeople = person
+            } else {
+                newPeerPeople = newPeerPeople + '、' + person;
+            }
+        })
+        return newPeerPeople;
+    }
+
     render() {
         let rightMessage = null;
         let rightColor = null;
@@ -756,7 +933,7 @@ class TravelApplyDetail extends Component {
             rightColor = '#FFAA00';
             rightClick = this.openEmailDialog;
         }
-        if (this.props.state.currentUserId == this.props.state.currentUserId) {
+        if (this.props.state.currentUserId == this.props.state.createUserId) {
             if (Util.contains(['0', '1', '2'], this.props.state.applyStatus)) {
                 rightMessage = Message.EDIT;
                 rightColor = '#ABABAB';
@@ -769,10 +946,10 @@ class TravelApplyDetail extends Component {
             }
         }
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
                 <Dialog
-                    content={Message.CANCEL_REIMBURSEMENT}
+                    content={Message.TRAVEL_APPLY_DETAIL_CANCEL_CONFIRM}
                     type={'confirm'}
                     leftBtnText={Message.CANCEL}
                     rightBtnText={Message.CONFIRM}
@@ -828,6 +1005,9 @@ class TravelApplyDetail extends Component {
                              leftButtonText={Message.CANCEL}
                              rightButtonText={Message.CONFIRM}
                              rightClick={this.sendEmail.bind(this)}
+                             top={this.props.state.dialogTop}
+                             onFocus={this.inputOnFocus}
+                             onBlur={this.inputOnBlur}
                              width={590}
                              textAlignVertical={'center'}
                              height={332}/>
@@ -883,11 +1063,9 @@ class TravelApplyDetail extends Component {
                         <View style={styles.row}>
                             <Text style={styles.label}>{this.getStatus(this.props.state.applyStatus)}</Text>
                         </View>
-                        <View style={{
-                            backgroundColor: '#DEDEDE',
-                            height: ScreenUtil.scaleSize(2),
-                            marginTop: ScreenUtil.scaleSize(20),
-                        }}/>
+                        <View style={{marginTop: ScreenUtil.scaleSize(20)}}>
+                            <View style={CustomStyles.separatorLine}/>
+                        </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.TRAVEL_APPLY_DETAIL_NUMBER}</Text>
                             <Text style={styles.text}>{this.props.state.applyNo}</Text>
@@ -913,10 +1091,24 @@ class TravelApplyDetail extends Component {
                             <Text style={styles.label}>{Message.REIMBURSEMENT_DEPARTMENT}</Text>
                             <Text style={styles.text}>{this.props.state.expenseDepartmentName}</Text>
                         </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_CAUSEL}</Text>
-                            <Text style={styles.text}>{this.props.state.cause}</Text>
+                        <View style={{
+                            flexDirection: 'row',
+                            marginTop: ScreenUtil.scaleSize(20),
+                        }}>
+                            <View style={{
+                                height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
+                            }}>
+                                <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_CAUSEL}</Text>
+                            </View>
+                            <Text style={{
+                                fontSize: ScreenUtil.setSpText(9),
+                                color: '#666666',
+                                lineHeight: ScreenUtil.scaleSize(40),
+                                width: ScreenUtil.scaleSize(450),
+                            }}>{this.props.state.cause}</Text>
                         </View>
+
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_BEGIN_DATE}</Text>
                             <Text style={styles.text}>{this.props.state.applyStartDate}</Text>
@@ -927,28 +1119,91 @@ class TravelApplyDetail extends Component {
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_DAYS}</Text>
-                            <Text style={styles.text}>{this.props.state.travelDays + "天"}</Text>
+                            <Text
+                                style={styles.text}>{this.props.state.travelDays ? this.props.state.travelDays + "天" : ''}</Text>
                         </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_CITY}</Text>
-                            <Text style={styles.text}>{this.props.state.targetCity}</Text>
+                        <View style={{
+                            flexDirection: 'row',
+                            marginTop: ScreenUtil.scaleSize(20),
+                        }}>
+                            <View style={{
+                                height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
+                            }}>
+                                <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_CITY}</Text>
+                            </View>
+                            <Text style={{
+                                fontSize: ScreenUtil.setSpText(9),
+                                color: '#666666',
+                                lineHeight: ScreenUtil.scaleSize(40),
+                                width: ScreenUtil.scaleSize(450),
+                            }}>{this.props.state.targetCity}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_EXPECTED_COST}</Text>
                             <Text
-                                style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.expectedCostAmount}</Text>
+                                style={[styles.text, {color: '#FFAA00'}]}>{this.props.state.expectedCostAmount == 0 ? '' : Message.MONEY + parseFloat(this.props.state.expectedCostAmount).toFixed(2)}</Text>
                         </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_PEER_PERPLE}</Text>
-                            <Text style={styles.text}>{this.props.state.peerPerple}</Text>
-                        </View>
-                        <View style={styles.row}>
+                        <View style={{
+                            flexDirection: 'row',
+                            marginTop: ScreenUtil.scaleSize(20),
+                        }}>
                             <View style={{
                                 height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
+                            }}>
+                                <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_PEER_PEOPLE}</Text>
+                            </View>
+                            <Text style={{
+                                fontSize: ScreenUtil.setSpText(9),
+                                color: '#666666',
+                                lineHeight: ScreenUtil.scaleSize(40),
+                                width: ScreenUtil.scaleSize(450),
+                            }}>{this.reFormPeerPeople(this.props.state.peerPerple)}</Text>
+                        </View>
+                        <View style={{
+                            marginTop: ScreenUtil.scaleSize(20),
+                            flexDirection: 'row',
+                        }}>
+                            <View style={{
+                                height: ScreenUtil.scaleSize(40),
+                                justifyContent: 'center',
                             }}>
                                 <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_ATTACHMENT}</Text>
                             </View>
-                            <FlatList/>
+                            <FlatList
+                                data={this.props.state.attachmentList}
+                                renderItem={({item, index}) => (
+                                    <TouchableOpacity style={{
+                                        flexDirection: 'row',
+                                        height: ScreenUtil.scaleSize(66),
+                                        marginTop: ScreenUtil.scaleSize(index == 0 ? 0 : 40),
+                                        alignItems: 'center',
+                                    }} onPress={() => {
+                                        this.previewDocument(item);
+                                    }}>
+                                        {this.renderFileIcon(item.fileType)}
+                                        <View style={{
+                                            marginLeft: ScreenUtil.scaleSize(20),
+                                            flex: 1,
+                                        }}>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(7),
+                                                color: '#666666',
+                                            }} numberOfLines={1}>{item.fileName}</Text>
+                                            <Text style={{
+                                                fontSize: ScreenUtil.setSpText(7),
+                                                color: '#666666'
+                                            }} numberOfLines={1}>{item.fileSize + 'KB'}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                            />
+                        </View>
+                        <View style={styles.row}>
+                            <Text style={styles.label}>{Message.NEW_TRAVEL_APPLY_COPY}</Text>
+                            <Text
+                                style={[styles.text]}>{this.props.state.ccName}</Text>
                         </View>
                     </View>
                     {
@@ -978,7 +1233,7 @@ class TravelApplyDetail extends Component {
                     }
                 </ScrollView>
                 {this.renderBottom()}
-            </View>
+            </SafeAreaView>
         )
     }
 }
@@ -999,6 +1254,11 @@ function mapDispatchToProps(dispatch) {
         loadData: loadData,
         changeAppState: changeAppState,
         editTravelApplyDetail: editTravelApplyDetail,
+        operateCancel: operateCancel,
+        operateApproval: operateApproval,
+        addComment: addComment,
+        navigateReimbursementReply: navigateReimbursementReply,
+        sendEmail: sendEmail
     }, dispatch)
 }
 
@@ -1014,9 +1274,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#F6F6F6'
     },
     topView: {
-        paddingHorizontal: ScreenUtil.scaleSize(30),
         paddingVertical: ScreenUtil.scaleSize(20),
         backgroundColor: '#FFFFFF',
+        paddingHorizontal: ScreenUtil.scaleSize(30),
     },
     row: {
         height: ScreenUtil.scaleSize(40),

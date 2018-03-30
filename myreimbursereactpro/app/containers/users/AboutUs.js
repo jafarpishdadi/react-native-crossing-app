@@ -9,6 +9,7 @@ import Util from "../../utils/Util";
 import {back} from '../../redux/actions/navigator/Navigator';
 var Linking = require('Linking');
 import API from "../../utils/API";
+import SafeAreaView from "react-native-safe-area-view";
 var RNBridgeModule = NativeModules.RNBridgeModule;
 
 class MenuItem extends React.Component {
@@ -80,87 +81,89 @@ class AboutUs extends React.Component {
     //页面渲染
     render() {
         return (
-            <View style={styles.container}>
-                <Header
-                    titleText={Message.ABOUT_US}
-                    thisComponent={this}
-                    backClick={this.onBack}
-                />
-                <View style={{flex: 1}}>
-                    <View style={{
+            <SafeAreaView style={styles.container}>
+                <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                    <Header
+                        titleText={Message.ABOUT_US}
+                        thisComponent={this}
+                        backClick={this.onBack}
+                    />
+                    <View style={{flex: 1, backgroundColor: '#F1F1F1'}}>
+                        <View style={{
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: "center",
+                            marginTop: ScreenUtil.scaleSize(50)
+                        }}>
+                            <Image style={{height: ScreenUtil.scaleSize(180), width: ScreenUtil.scaleSize(180)}}
+                                   source={require('./../../img/mine/ele_logo.png')}/>
+                            <Text style={{
+                                marginTop: ScreenUtil.scaleSize(30),
+                                color: '#4A4A4A',
+                                fontSize: ScreenUtil.scaleSize(28)
+                            }}>{Message.APP_NAME }</Text>
+                            <Text style={{
+                                marginTop: ScreenUtil.scaleSize(20),
+                                color: '#ABABAB',
+                                fontSize: ScreenUtil.scaleSize(24)
+                            }}>{API.APP_VERSION}</Text>
+                        </View>
+
+                        <View style={[styles.rowSpace, {
+                            marginTop: ScreenUtil.scaleSize(60),
+                            alignItems: 'center',
+                            justifyContent: "center",
+                        }]}>
+                            <Text style={{
+                                fontSize: ScreenUtil.scaleSize(28),
+                                color: '#666666'
+                            }}>{Message.ABOUT_US_INFO}</Text>
+                        </View>
+                        <View style={[styles.rowSpace, {
+                            marginTop: ScreenUtil.scaleSize(91),
+                            marginLeft: ScreenUtil.scaleSize(30)
+                        }]}>
+                            <Text style={{
+                                fontSize: ScreenUtil.scaleSize(20),
+                                marginBottom: ScreenUtil.scaleSize(4),
+                                color: '#A5A5A5'
+                            }}>{Message.ABOUT_US_CONTACT_WAY}</Text>
+                        </View>
+                        <View style={[styles.menuBorder]}>
+                            <MenuItem
+                                title={Message.ABOUT_US_CONTACT_TEL}
+                                onClick={ () => this._phoneClick(Message.ABOUT_US_CONTACT_TEL)}
+                            />
+                            <View style={styles.rowSeparator}/>
+                            <MenuItem
+                                title={Message.ABOUT_US_CONTACT_EMAIL}
+                            />
+                        </View>
+                    </View>
+                    <View style={[styles.rowSpace, {
+                        paddingLeft: ScreenUtil.scaleSize(10),
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: "center",
-                        marginTop: ScreenUtil.scaleSize(50)
-                    }}>
-                        <Image style={{height: ScreenUtil.scaleSize(180), width: ScreenUtil.scaleSize(180)}}
-                               source={require('./../../img/mine/ele_logo.png')}/>
-                        <Text style={{
-                            marginTop: ScreenUtil.scaleSize(30),
-                            color: '#4A4A4A',
-                            fontSize: ScreenUtil.scaleSize(28)
-                        }}>{Message.APP_NAME }</Text>
-                        <Text style={{
-                            marginTop: ScreenUtil.scaleSize(20),
-                            color: '#ABABAB',
-                            fontSize: ScreenUtil.scaleSize(24)
-                        }}>{API.APP_VERSION}</Text>
-                    </View>
-
-                    <View style={[styles.rowSpace, {
-                        marginTop: ScreenUtil.scaleSize(60),
-                        alignItems: 'center',
-                        justifyContent: "center",
-                    }]}>
-                        <Text style={{
-                            fontSize: ScreenUtil.scaleSize(28),
-                            color: '#666666'
-                        }}>{Message.ABOUT_US_INFO}</Text>
-                    </View>
-                    <View style={[styles.rowSpace, {
-                        marginTop: ScreenUtil.scaleSize(91),
-                        marginLeft: ScreenUtil.scaleSize(30)
                     }]}>
                         <Text style={{
                             fontSize: ScreenUtil.scaleSize(20),
-                            marginBottom: ScreenUtil.scaleSize(4),
-                            color: '#A5A5A5'
-                        }}>{Message.ABOUT_US_CONTACT_WAY}</Text>
-                    </View>
-                    <View style={[styles.menuBorder]}>
-                        <MenuItem
-                            title={Message.ABOUT_US_CONTACT_TEL}
-                            onClick={ () => this._phoneClick(Message.ABOUT_US_CONTACT_TEL)}
-                        />
-                        <View style={styles.rowSeparator}/>
-                        <MenuItem
-                            title={Message.ABOUT_US_CONTACT_EMAIL}
-                        />
+                            marginBottom: ScreenUtil.scaleSize(10),
+                            color: '#666666'
+                        }}>{Message.ABOUT_US_TIP_ONE}</Text>
+                        <Text style={{
+                            fontSize: ScreenUtil.scaleSize(20),
+                            marginBottom: ScreenUtil.scaleSize(10),
+                            color: '#666666'
+                        }}>{Message.ABOUT_US_TIP_TWO}</Text>
+                        <Text style={{
+                            fontSize: ScreenUtil.scaleSize(20),
+                            marginBottom: ScreenUtil.scaleSize(10),
+                            color: '#666666'
+                        }}>{Message.ABOUT_US_TIP_THREE}</Text>
                     </View>
                 </View>
-                <View style={[styles.rowSpace, {
-                    paddingLeft: ScreenUtil.scaleSize(10),
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: "center",
-                }]}>
-                    <Text style={{
-                        fontSize: ScreenUtil.scaleSize(20),
-                        marginBottom: ScreenUtil.scaleSize(10),
-                        color: '#666666'
-                    }}>{Message.ABOUT_US_TIP_ONE}</Text>
-                    <Text style={{
-                        fontSize: ScreenUtil.scaleSize(20),
-                        marginBottom: ScreenUtil.scaleSize(10),
-                        color: '#666666'
-                    }}>{Message.ABOUT_US_TIP_TWO}</Text>
-                    <Text style={{
-                        fontSize: ScreenUtil.scaleSize(20),
-                        marginBottom: ScreenUtil.scaleSize(10),
-                        color: '#666666'
-                    }}>{Message.ABOUT_US_TIP_THREE}</Text>
-                </View>
-            </View>
+            </SafeAreaView>
         );
     }
 }
@@ -181,7 +184,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(AboutUs);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F1F1F1'
+        backgroundColor: 'white'
     },
     center: {
         alignItems: 'center',

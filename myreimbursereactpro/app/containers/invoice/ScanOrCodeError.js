@@ -23,6 +23,7 @@ import ScreenUtil, {deviceWidth} from '../../utils/ScreenUtil';
 import {back} from '../../redux/actions/navigator/Navigator';
 import Header from '../../containers/common/CommonHeader';
 import CommonLoading from '../../containers/common/CommonLoading';
+import SafeAreaView from "react-native-safe-area-view";
 
 class ScanOrCodeError extends Component {
 	static navigationOptions = ({navigation}) => ({
@@ -43,7 +44,7 @@ class ScanOrCodeError extends Component {
 
 	render() {
 		return(
-			<View style={styles.container}>
+			<SafeAreaView style={styles.container}>
 				<Header
 					titleText={Message.SCAN_MSG_TITLE}
 					thisComponent={this}
@@ -84,7 +85,7 @@ class ScanOrCodeError extends Component {
 							}}/>
 					</TouchableOpacity>
 				</View>
-			</View>
+			</SafeAreaView>
 		)
 	}
 }
@@ -105,6 +106,6 @@ export default connect(mapStateToProps, mapDispatchToProps)(ScanOrCodeError);
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: '#F3F3F3'
+		backgroundColor: 'white'
 	},
 });

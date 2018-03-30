@@ -17,12 +17,14 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {navigateMainScreen, back} from '../../redux/actions/navigator/Navigator';
 import {loginAction} from '../../redux/actions/users/Login';
+import {changeState as changeAppState} from '../../redux/actions/App';
 import Header from "./../common/CommonHeader";
 import Message from "../../constant/Message";
 import {CustomStyles} from '../../css/CustomStyles';
 import ScreenUtil from "../../utils/ScreenUtil";
 import Store from 'react-native-simple-store';
 import Util from "../../utils/Util";
+import SafeAreaView from "react-native-safe-area-view";
 
 class SuccessOpenEnterprise extends Component {
 
@@ -48,7 +50,7 @@ class SuccessOpenEnterprise extends Component {
         const dismissKeyboard = require('dismissKeyboard');
         return (
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={{flex: 1, backgroundColor: '#FFFFFF'}}>
+                <SafeAreaView style={{flex: 1, backgroundColor: '#FFFFFF'}}>
 
                     <Header
                         titleText={''}
@@ -76,13 +78,16 @@ class SuccessOpenEnterprise extends Component {
                         onPress={() => {
                             Store.get('token').then((token) => {
                                 if (token != null) {
+                                    this.props.changeAppState({
+                                        currentTab: 'HomePage',
+                                    })
                                     this.props.navigateToMain()
                                 }
                             })
                         }}>
                         <Text style={styles.experienceFunctionLabelStyle}>{Message.EXPERIENCE_FUNCTION}</Text>
                     </TouchableOpacity>
-                </View>
+                </SafeAreaView>
             </TouchableWithoutFeedback>
         );
     }
@@ -99,6 +104,7 @@ function mapDispatchToProps(dispatch) {
         back:back,
         doLogin: loginAction,
         navigateToMain: navigateMainScreen,
+        changeAppState: changeAppState,
     }, dispatch);
 }
 
@@ -107,8 +113,6 @@ export default connect(mapStateToProps, mapDispatchToProps)(SuccessOpenEnterpris
 const styles = StyleSheet.create({
     viewDisplayStyle: {
         marginTop: ScreenUtil.scaleSize(100),
-        // marginLeft: ScreenUtil.scaleSize(305),
-        // marginRight: ScreenUtil.scaleSize(305),
         alignSelf: 'center'
     },
     headSeparatorLine: {

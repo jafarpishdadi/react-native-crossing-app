@@ -143,7 +143,7 @@ export const getCheckState = (requestData, callBack) => {
                         if (ret.data.detailList != null && ret.data.detailList.length > 0) {
                             goodsName = ret.data.detailList[0].goodsName + (ret.data.detailList.length > 1 ? '等' : '');
                         }
-                        invoiceAmount = parseFloat(ret.data.invoiceAmount) == 'NaN' || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2) + '';
+                        invoiceAmount = isNaN(parseFloat(ret.data.invoiceAmount)) || ret.data.invoiceAmount == 0 ? '' : parseFloat(ret.data.invoiceAmount).toFixed(2) + '';
                         invoiceDate = ret.data.invoiceDate.substring(0, 4) + '-' +
                             ret.data.invoiceDate.substring(4, 6) + '-' + ret.data.invoiceDate.substring(6);
                         dispatch(changeState({
@@ -174,7 +174,7 @@ export const getCheckState = (requestData, callBack) => {
                             500
                         );
                     } else {
-                        callBack(requestData, requestData.invoiceDetail);
+                        callBack(ret.data, requestData.invoiceDetail);
                     }
                 } else {
                     Util.showToast(ret.message);

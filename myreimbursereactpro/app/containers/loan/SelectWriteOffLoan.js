@@ -36,6 +36,7 @@ import {
 } from "../../redux/actions/loan/SelectWriteOffLoan"
 import {changeState as changeAppState} from "../../redux/actions/App";
 import Util from '../../utils/Util';
+import SafeAreaView from "react-native-safe-area-view";
 
 var RNBridgeModule = NativeModules.RNBridgeModule;
 class SelectWriteOffLoan extends Component {
@@ -118,7 +119,7 @@ class SelectWriteOffLoan extends Component {
 
     render() {
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
                 <Header
                     titleText={Message.SELECT_WRITE_OFF_LOAN_TITLE}
@@ -146,7 +147,7 @@ class SelectWriteOffLoan extends Component {
 
                     </FlatList>
                 </View>
-            </View>
+            </SafeAreaView>
         )
     }
 }

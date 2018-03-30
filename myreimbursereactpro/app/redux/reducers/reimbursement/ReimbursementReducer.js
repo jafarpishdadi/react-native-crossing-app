@@ -62,6 +62,7 @@ const initialState = {
     text: "(20s)",
     timeEnd: false,  //录音时间结束标志，true-是，false-否
     expenseDescTextInputHeight: 80, //报销说明输入框高度
+    targetCityTextInputHeight: 80, //目的城市输入框高度
 
     dialogTitle: '',
     dialogContent: '',
@@ -91,7 +92,12 @@ const initialState = {
     endHour: '',    //结束时间小时数
     endMinute: '',  //结束时间分钟数
 
-    isCleanDate: false
+    calendarDate: '',
+
+    isCleanDate: false,
+
+    selectionStart: 0,               //光标选择开始位置
+    selectionEnd: 0,                  //光标选择结束
 
 }
 
@@ -254,8 +260,8 @@ const ReimbursementReducer = (state = initialState, action) => {
             var totalNum = 0;
             var totalAmount = 0;
             for (var j = 0; j < tempBizExpenseTypeList.length; j++) {
-                totalNum += parseInt(tempBizExpenseTypeList[j].totalNum);
-                totalAmount += parseFloat(tempBizExpenseTypeList[j].totalAmount);
+                totalNum += parseInt(tempBizExpenseTypeList[j].totalNum ? tempBizExpenseTypeList[j].totalNum : 0);
+                totalAmount += parseFloat(tempBizExpenseTypeList[j].totalAmount ? tempBizExpenseTypeList[j].totalAmount : 0);
             }
             totalAmount += parseFloat(state.travelBill ? state.travelBill : 0);
 

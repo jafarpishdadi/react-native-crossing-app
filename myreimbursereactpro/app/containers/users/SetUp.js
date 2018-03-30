@@ -2,32 +2,17 @@
  * Created by richard.ji on 2017/11/1.
  */
 
-import React, {Component} from 'react';
-import {
-    View,
-    Image,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    Text,
-    Platform,
-    StyleSheet
-} from 'react-native';
-
-import {connect} from 'react-redux';
-import {bindActionCreators} from 'redux';
-
-import {back} from '../../redux/actions/navigator/Navigator';
+import React, {Component} from "react";
+import {View, Image, TouchableOpacity, TouchableWithoutFeedback, Text, Platform, StyleSheet} from "react-native";
+import {connect} from "react-redux";
+import {bindActionCreators} from "redux";
+import {back} from "../../redux/actions/navigator/Navigator";
 import Header from "./../common/CommonHeader";
-import {
-    setUpAction,
-    getIsLinkState,
-    updateIsLinkState,
-    logoutTo
-} from '../../redux/actions/users/SetUp';
+import {setUpAction, getIsLinkState, updateIsLinkState, logoutTo} from "../../redux/actions/users/SetUp";
 import Message from "../../constant/Message";
-import {CustomStyles} from '../../css/CustomStyles';
 import ScreenUtil from "../../utils/ScreenUtil";
-import CommonLoading from '../../containers/common/CommonLoading';
+import CommonLoading from "../../containers/common/CommonLoading";
+import SafeAreaView from "react-native-safe-area-view";
 
 class SetUp extends Component {
 
@@ -63,36 +48,40 @@ class SetUp extends Component {
         );
 
         return (
-            <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
-                <CommonLoading isShow={this.props.setUpState.isLoading}/>
-                <Header
-                    titleText={Message.SET_UP}
-                    thisComponent={this}
-                    backClick={this.onBack}
-                />
-                <View style={[styles.rowContainer, {marginTop: ScreenUtil.scaleSize(60)}]}>
-                    <Text style={styles.setUpDisplayLabel}>{Message.SET_UP_DISPLAY_INFORMATION}</Text>
+            <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
+                <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                    <CommonLoading isShow={this.props.setUpState.isLoading}/>
+                    <Header
+                        titleText={Message.SET_UP}
+                        thisComponent={this}
+                        backClick={this.onBack}
+                    />
+                    <View style={[styles.rowContainer, {marginTop: ScreenUtil.scaleSize(60)}]}>
+                        <Text style={styles.setUpDisplayLabel}>{Message.SET_UP_DISPLAY_INFORMATION}</Text>
+                        <TouchableOpacity
+                            onPress={this.selectReminding.bind(this)}>
+                            <Image
+                                style={styles.setUpImageStyle}
+                                source={selectIcon}/>
+                        </TouchableOpacity>
+                    </View>
                     <TouchableOpacity
-                        onPress={this.selectReminding.bind(this)}>
+                        onPress={() => {
+                            this.props.logoutTo()
+                        }}
+                        style={{
+                            marginTop: ScreenUtil.scaleSize(841)
+                        }}
+                    >
                         <Image
-                            style={styles.setUpImageStyle}
-                            source={selectIcon} />
+                            style={styles.logoutIcon}
+                            source={require('./../../img/login/logout.png')}/>
                     </TouchableOpacity>
+                    <View style={styles.bottomView}>
+                        <Text style={styles.bottomText}>{Message.SET_UP_DISPLAY_TIP_INFORMATION}</Text>
+                    </View>
                 </View>
-                <TouchableOpacity
-                    onPress={() => {this.props.logoutTo()}}
-                    style={{
-                        marginTop: ScreenUtil.scaleSize(841)
-                    }}
-                >
-                    <Image
-                        style={styles.logoutIcon}
-                        source={require('./../../img/login/logout.png')}/>
-                </TouchableOpacity>
-                <View style={styles.bottomView}>
-                    <Text style={styles.bottomText}>{Message.SET_UP_DISPLAY_TIP_INFORMATION}</Text>
-                </View>
-            </View>
+            </SafeAreaView>
         );
     }
 }

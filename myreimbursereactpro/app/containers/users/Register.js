@@ -28,6 +28,7 @@ import ScreenUtil from "../../utils/ScreenUtil";
 import Util from '../../utils/Util';
 import Dialog from '../../containers/common/Dialog';
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 
 class Register extends Component {
 
@@ -324,176 +325,163 @@ class Register extends Component {
         );
 
         return (
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
-                    <Header
-                        titleText={Message.REGISTER}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_CHECK_DATA_MESSAGE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog1}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal1}
-                        alertBtnClick={this._closeModal1}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_CHECK_USER_AGREEMENT_AND_VERIFICATION_CODE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog2}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal2}
-                        alertBtnClick={this._closeModal2}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_CHECK_PHONE_NUMBER_AND_USER_AGREEMENT}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog3}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal3}
-                        alertBtnClick={this._closeModal3}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_CHECK_PHONE_NUMBER_AND_VALIDATION_CODE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog4}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal4}
-                        alertBtnClick={this._closeModal4}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_CHECK_USER_AGREEMENT}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog5}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal5}
-                        alertBtnClick={this._closeModal5}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_EMPTY_PHONE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog6}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal6}
-                        alertBtnClick={this._closeModal6}
-                        thisComponent={this}
-                    />
-                    <Dialog
-                        content={Message.REGISTER_INPUT_VERIFICATION_CODE}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog7}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal7}
-                        alertBtnClick={this._closeModal7}
-                        thisComponent={this}
-                    />
+            <SafeAreaView style={styles.container}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
+                        <Header
+                            titleText={Message.REGISTER}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_CHECK_DATA_MESSAGE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog1}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal1}
+                            alertBtnClick={this._closeModal1}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_CHECK_USER_AGREEMENT_AND_VERIFICATION_CODE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog2}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal2}
+                            alertBtnClick={this._closeModal2}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_CHECK_PHONE_NUMBER_AND_USER_AGREEMENT}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog3}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal3}
+                            alertBtnClick={this._closeModal3}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_CHECK_PHONE_NUMBER_AND_VALIDATION_CODE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog4}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal4}
+                            alertBtnClick={this._closeModal4}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_CHECK_USER_AGREEMENT}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog5}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal5}
+                            alertBtnClick={this._closeModal5}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_EMPTY_PHONE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog6}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal6}
+                            alertBtnClick={this._closeModal6}
+                            thisComponent={this}
+                        />
+                        <Dialog
+                            content={Message.REGISTER_INPUT_VERIFICATION_CODE}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog7}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal7}
+                            alertBtnClick={this._closeModal7}
+                            thisComponent={this}
+                        />
 
-                    <CommonLoading isShow={this.props.state.isLoading}/>
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_INPUT_PHONE}
-                                maxLength={11}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="phone"
-                                selectionColor="#FFAA00"
-                                keyboardType="numeric"
-                                value={this.props.state.registerPhoneNumber}
-                                onChangeText={(text) => {
-                                    this.props.changeState({registerPhoneNumber: text})
-                                }}
-                                returnKeyType={'done'}/>
+                        <CommonLoading isShow={this.props.state.isLoading}/>
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_PHONE_NO}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_INPUT_PHONE}
+                                    maxLength={11}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="phone"
+                                    selectionColor="#FFAA00"
+                                    keyboardType="numeric"
+                                    value={this.props.state.registerPhoneNumber}
+                                    onChangeText={(text) => {
+                                        this.props.changeState({registerPhoneNumber: text})
+                                    }}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
+                                    maxLength={6}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    ref="code"
+                                    selectionColor="#FFAA00"
+                                    keyboardType="numeric"
+                                    value={this.props.state.registerVerificationCode}
+                                    onChangeText={(text) => {
+                                        this.props.changeState({registerVerificationCode: text})
+                                    }}
+                                    returnKeyType={'done'}/>
+                                <TouchableOpacity disabled={this.props.state.btnDisable1} onPress={() => {
+                                    this.sendValidationCode()
+                                }}>
+                                    <View style={this._choose_code_View1_style()}>
+                                        <Text style={this._choose_ver_code_style()}>{this.props.state.text}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_VERIFICATION_CODE}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_INPUT_VERIFICATION_CODE}
-                                maxLength={6}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                ref="code"
-                                selectionColor="#FFAA00"
-                                keyboardType="numeric"
-                                value={this.props.state.registerVerificationCode}
-                                onChangeText={(text) => {
-                                    this.props.changeState({registerVerificationCode: text})
-                                }}
-                                returnKeyType={'done'}/>
-                            <TouchableOpacity disabled={this.props.state.btnDisable1} onPress={() => {
-                                this.sendValidationCode()
+                        <TouchableOpacity disabled={this.props.state.btnDisable2} style={{
+                            marginTop: ScreenUtil.scaleSize(180),
+                            height: ScreenUtil.scaleSize(75),
+                            width: ScreenUtil.scaleSize(550),
+                            resizeMode: 'stretch',
+                            alignSelf: 'center',
+                        }}
+                                          onPress={() => {
+                                              this.checkData()
+                                          }}>
+                            <View style={this._choose_next_style()}>
+                                <Text style={styles.next}>{Message.REGISTER_NEXT_STEP}</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <View style={styles.bottomView}>
+                            <TouchableOpacity onPress={this.selectHooked.bind(this)}>
+                                <Image
+                                    style={styles.registerCheckBox}
+                                    source={selectIcon}/>
+                            </TouchableOpacity>
+                            <Text style={styles.agreementLabel}>
+                                {Message.REGISTER_AGREEMENT_LABEL}
+                            </Text>
+                            <TouchableOpacity onPress={()=> {
+                                this.props.registerAgreementAction()
                             }}>
-                                <View style={this._choose_code_View1_style()}>
-                                    <Text style={this._choose_ver_code_style()}>{this.props.state.text}</Text>
-                                </View>
+                                <Text style={styles.userRegisterAgreement}>{Message.REGISTER_USER_AGREEMENT}</Text>
                             </TouchableOpacity>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
                     </View>
-{/*                    <TouchableOpacity
-                        style={{
-                            marginTop: ScreenUtil.scaleSize(180),
-                        }}
-                        onPress={() => {
-                            this.checkData()
-                        }}>
-                        <Image source={require('../../img/common/next.png')}
-                               style={{
-                                   height: ScreenUtil.scaleSize(75),
-                                   width: ScreenUtil.scaleSize(550),
-                                   resizeMode: 'stretch',
-                                   alignSelf: 'center',
-                               }}/>
-                    </TouchableOpacity>*/}
-                    <TouchableOpacity disabled={this.props.state.btnDisable2} style={{
-                        marginTop: ScreenUtil.scaleSize(180),
-                        height: ScreenUtil.scaleSize(75),
-                        width: ScreenUtil.scaleSize(550),
-                        resizeMode: 'stretch',
-                        alignSelf: 'center',
-                    }}
-                                      onPress={() => {
-                                          this.checkData()
-                                      }}>
-                        <View style={this._choose_next_style()}>
-                            <Text style={styles.next}>{Message.REGISTER_NEXT_STEP}</Text>
-                        </View>
-                    </TouchableOpacity>
-                    <View style={styles.bottomView}>
-                        <TouchableOpacity onPress={this.selectHooked.bind(this)}>
-                            <Image
-                                style={styles.registerCheckBox}
-                                source={selectIcon}/>
-                        </TouchableOpacity>
-                        <Text style={styles.agreementLabel}>
-                            {Message.REGISTER_AGREEMENT_LABEL}
-                        </Text>
-                        <TouchableOpacity onPress={()=> {
-                            this.props.registerAgreementAction()
-                        }}>
-                            <Text style={styles.userRegisterAgreement}>{Message.REGISTER_USER_AGREEMENT}</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         )
     }
 }

@@ -41,6 +41,16 @@ const initialState = {
     upgradeChecked:false,   //是否检查过版本，调完检查版本接口设成true，防止reset到首页又去检查版本
     showUpgrade: false,     //是否显示新版本提示
     versionData:{},         //版本数据
+    travelCount: 0,     //出差申请审批中个数
+    loanCount: 0,       //借款申请审批中个数
+    loanAmount: 0,      //借款申请合计金额
+    loanNoPayAmount: 0,     //位还款累计金额
+    hasOtherMessage: false,     //是否有别的公司的消息
+    showOtherMessage: false,    //是否显示别的公司消息提示
+
+    forceUpgrade:false,         //显示强制更新
+    process:0,                   //进度条进度
+    iosForceUpgrade:false,      //ios强制升级
 }
 
 const homePageReducer = (state = initialState, action) => {

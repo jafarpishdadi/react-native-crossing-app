@@ -1,14 +1,10 @@
-import * as types from '../../../constant/ActionTypes';
-import HttpUtil from '../../../network/HttpUtil';
-import API from '../../../utils/API';
-import Util from '../../../utils/Util';
-import Message from '../../../constant/Message';
-import {loadData as loadHomePageData} from '../../../redux/actions/homePage/HomePage';
-import {loadData as loadReimbursementDetail} from '../../../redux/actions/reimbursement/ReimbursementDetail';
-import {back, resetApplicationList} from '../../../redux/actions/navigator/Navigator';
-import {refreshReimbursementList} from '../../../redux/actions/reimbursement/ReimbursementList';
-import ScreenUtil from '../../../utils/ScreenUtil';
-import {loadData as reportData, changeState as reportChangeState} from '../../actions/report/Report';
+import * as types from "../../../constant/ActionTypes";
+import HttpUtil from "../../../network/HttpUtil";
+import API from "../../../utils/API";
+import Util from "../../../utils/Util";
+import Message from "../../../constant/Message";
+import {resetApplicationList} from "../../../redux/actions/navigator/Navigator";
+import ScreenUtil from "../../../utils/ScreenUtil";
 
 export const loadData = (params, bizExpenseTypeList) => {
 
@@ -358,6 +354,41 @@ export const initReimbursement = (param) => {
     }
 }
 
+export const changeType = () => {
+    return dispatch => {
+        dispatch(changeState({
+            selectReimType: false,                  //报销类型选择器
+            selectedStartDate: '',                  //开始日期
+            selectedEndDate: '',                    //结束日期
+            travelDays: '',                          //出差天数
+            targetCity: '',                          //目的城市
+            expenseDescCommon: '',                   //通用报销单说明
+            expenseTypeList: [],                    //费用类别列表
+            travelBill: '',
+            warningDialog: false,        //显示弹窗
+            alertTitle: '',              //弹窗标题
+            alertContent: '',            //弹窗内容
+            expenseStateCode: '0',       //0保存，3提交
+            showPrompt: false,          //保存结果提示
+            promptType: '',             //提示类型
+            promptMsg: '',              //提示内容
+            startDateSelected: '',
+            endDateSelected: '',
+            startTimeSelected: '',
+            endTimeSelected: '',
+            showStartDateSelected: '',
+            showEndDateSelected:'',
+            defaultSelectedDate: '',
+            defaultSelectedTime: '',
+            startHour: '',
+            startMinute: '',
+            endHour: '',
+            endMinute: '',
+            calendarDate: '',
+        }));
+    }
+}
+
 
 /**
  * 语音识别
@@ -379,9 +410,12 @@ export const recogniseVoiceRecord = (type, expenseId, requestData) => {
                     const Reimbursement = getState().Reimbursement;
                     //报销事由
                     if (type == 0) {
-                        var expenseDesc = Reimbursement.expenseDesc + ret.data.result;
+                        var expenseDesc = Reimbursement.expenseDesc.substring(0, Reimbursement.selectionStart)
+                            + ret.data.result
+                            + Reimbursement.expenseDesc.substring(Reimbursement.selectionEnd, Reimbursement.expenseDesc.length);
+
                         if (expenseDesc.length > 300) {
-                            expenseDesc = text.substring(0, 299);
+                            expenseDesc = expenseDesc.substring(0, 300);
                         }
                         dispatch(changeState({
                             expenseDesc: expenseDesc
@@ -390,9 +424,12 @@ export const recogniseVoiceRecord = (type, expenseId, requestData) => {
                         var bizExpenseTypeList = Reimbursement.bizExpenseTypeList;
                         for (var i = 0; i < bizExpenseTypeList.length; i++) {
                             if (expenseId == bizExpenseTypeList[i].expenseId) {
-                                var detail = bizExpenseTypeList[i].detail + ret.data.result;
+                                var detail = bizExpenseTypeList[i].detail.substring(0, Reimbursement.selectionStart)
+                                    + ret.data.result
+                                    + bizExpenseTypeList[i].detail.substring(Reimbursement.selectionEnd, bizExpenseTypeList[i].detail.length);
+
                                 if (detail.length > 300) {
-                                    detail = text.substring(0, 299);
+                                    detail = detail.substring(0, 300);
                                 }
                                 bizExpenseTypeList[i].detail = detail;
                                 dispatch(changeState({bizExpenseTypeList: bizExpenseTypeList}))

@@ -2,7 +2,7 @@
  * Created by richard.ji on 2017/10/31.
  */
 
-import React, {Component} from 'react';
+import React, {Component} from "react";
 import {
     View,
     Image,
@@ -12,25 +12,20 @@ import {
     Platform,
     StyleSheet,
     NativeModules
-} from 'react-native';
-
-import {connect} from 'react-redux';
-import {bindActionCreators} from 'redux';
-
+} from "react-native";
+import {connect} from "react-redux";
+import {bindActionCreators} from "redux";
 import Message from "../../constant/Message";
-import {CustomStyles} from '../../css/CustomStyles';
+import {CustomStyles} from "../../css/CustomStyles";
 import ScreenUtil from "../../utils/ScreenUtil";
-import Util from '../../utils/Util';
+import Util from "../../utils/Util";
 import Picker from "react-native-picker";
-import {
-    changeState,
-    saveData,
-} from '../../redux/actions/users/PersonalInformation';
-import {back} from '../../redux/actions/navigator/Navigator';
-import Header from '../../containers/common/CommonHeader';
+import {changeState, saveData} from "../../redux/actions/users/PersonalInformation";
+import {back} from "../../redux/actions/navigator/Navigator";
+import Header from "../../containers/common/CommonHeader";
 import BackDialog from "./../common/BackDialog";
-import Dialog from '../../containers/common/Dialog';
-import CommonLoading from '../../containers/common/CommonLoading';
+import CommonLoading from "../../containers/common/CommonLoading";
+import SafeAreaView from "react-native-safe-area-view";
 var RNBridgeModule = NativeModules.RNBridgeModule;
 
 class PersonalInformation extends Component {
@@ -216,96 +211,98 @@ class PersonalInformation extends Component {
                 dismissKeyboard();
                 Picker.hide();
             }}>
-                <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
-                    <BackDialog
-                        thisComponent={this}
-                        isShow={this.props.state.showPickerShadow}
-                        backgroundClick={
-                            (component) => {
-                                Picker.hide();
-                                component.props.changeState({showPickerShadow: false});
-                            }
-                        }/>
-                    <CommonLoading isShow={this.props.state.isLoading}/>
-                    <Header
-                        titleText={Message.PERSONAL_INFORMATION}
-                        thisComponent={this}
-                        backClick={this.onBack.bind(this)}
-                    />
-                    <View style={styles.personalInfoContainer}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (Platform.OS === 'android') {
-                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
+                    <View style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                        <BackDialog
+                            thisComponent={this}
+                            isShow={this.props.state.showPickerShadow}
+                            backgroundClick={
+                                (component) => {
+                                    Picker.hide();
+                                    component.props.changeState({showPickerShadow: false});
+                                }
+                            }/>
+                        <CommonLoading isShow={this.props.state.isLoading}/>
+                        <Header
+                            titleText={Message.PERSONAL_INFORMATION}
+                            thisComponent={this}
+                            backClick={this.onBack.bind(this)}
+                        />
+                        <View style={styles.personalInfoContainer}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (Platform.OS === 'android') {
+                                        RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                            this.props.changeState({showPickerShadow: true});
+                                            this.createGenderPicker();
+                                            Picker.show();
+                                        });
+                                    } else {
                                         this.props.changeState({showPickerShadow: true});
                                         this.createGenderPicker();
                                         Picker.show();
-                                    });
-                                } else {
-                                    this.props.changeState({showPickerShadow: true});
-                                    this.createGenderPicker();
-                                    Picker.show();
-                                }
-                            }}>
-                            <View style={styles.rowContainer}>
-                                <Text style={[styles.textView, {flex: 1}]}>{Message.GENDER}</Text>
-                                <Text style={styles.textView}>
-                                    {this.props.state.sexStr}
-                                </Text>
-                                <Image
-                                    style={styles.arrowIcon}
-                                    source={require('./../../img/common/arrow.png')}/>
-                            </View>
-                        </TouchableOpacity>
+                                    }
+                                }}>
+                                <View style={styles.rowContainer}>
+                                    <Text style={[styles.textView, {flex: 1}]}>{Message.GENDER}</Text>
+                                    <Text style={styles.textView}>
+                                        {this.props.state.sexStr}
+                                    </Text>
+                                    <Image
+                                        style={styles.arrowIcon}
+                                        source={require('./../../img/common/arrow.png')}/>
+                                </View>
+                            </TouchableOpacity>
 
-                        <View style={CustomStyles.separatorLine} />
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (Platform.OS === 'android') {
-                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                            <View style={CustomStyles.separatorLine}/>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (Platform.OS === 'android') {
+                                        RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                            this.props.changeState({showPickerShadow: true});
+                                            this.createDatePicker();
+                                            Picker.show();
+                                        });
+                                    } else {
                                         this.props.changeState({showPickerShadow: true});
                                         this.createDatePicker();
                                         Picker.show();
-                                    });
-                                } else {
-                                    this.props.changeState({showPickerShadow: true});
-                                    this.createDatePicker();
-                                    Picker.show();
-                                }
-                            }}>
-                        <View style={[styles.rowContainer]}>
-                            <Text style={[styles.textView, {flex: 1}]}>{Message.BIRTHDAY}</Text>
-                            <Text style={styles.textView}>{this.props.state.birthday}</Text>
-                            <Image
-                                style={styles.arrowIcon}
-                                source={require('./../../img/common/arrow.png')}/>
-                        </View>
-                            </TouchableOpacity>
-                        <View style={CustomStyles.separatorLine} />
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (Platform.OS === 'android') {
-                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                                        this.props.changeState({showPickerShadow: true});
-                                        this.createAreaPicker();
-                                        Picker.show();
-                                    });
-                                } else {
-                                    this.props.changeState({showPickerShadow: true});
-                                    this.createAreaPicker();
-                                    Picker.show();
-                                }
-                            }}>
-                            <View style={styles.rowContainer}>
-                                <Text style={[styles.textView, {flex: 1}]}>{Message.REGION}</Text>
-                                <Text style={styles.textView}>{this.props.state.area}</Text>
+                                    }
+                                }}>
+                                <View style={[styles.rowContainer]}>
+                                    <Text style={[styles.textView, {flex: 1}]}>{Message.BIRTHDAY}</Text>
+                                    <Text style={styles.textView}>{this.props.state.birthday}</Text>
                                 <Image
                                     style={styles.arrowIcon}
                                     source={require('./../../img/common/arrow.png')}/>
                             </View>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                            <View style={CustomStyles.separatorLine}/>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (Platform.OS === 'android') {
+                                        RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                                            this.props.changeState({showPickerShadow: true});
+                                            this.createAreaPicker();
+                                            Picker.show();
+                                        });
+                                    } else {
+                                        this.props.changeState({showPickerShadow: true});
+                                        this.createAreaPicker();
+                                        Picker.show();
+                                    }
+                                }}>
+                                <View style={styles.rowContainer}>
+                                    <Text style={[styles.textView, {flex: 1}]}>{Message.REGION}</Text>
+                                    <Text style={styles.textView}>{this.props.state.area}</Text>
+                                    <Image
+                                        style={styles.arrowIcon}
+                                        source={require('./../../img/common/arrow.png')}/>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
+                </SafeAreaView>
             </TouchableWithoutFeedback>
         );
     }

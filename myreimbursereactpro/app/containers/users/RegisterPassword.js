@@ -27,6 +27,7 @@ import Util from '../../utils/Util';
 import Dialog from '../../containers/common/Dialog';
 import Store from 'react-native-simple-store';
 import {CustomStyles} from '../../css/CustomStyles';
+import SafeAreaView from "react-native-safe-area-view";
 var MyDeviceInfoModule = NativeModules.MyDeviceInfoModule;
 
 class RegisterPassword extends Component {
@@ -125,71 +126,73 @@ class RegisterPassword extends Component {
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         return(
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                    <View style={styles.container}>
 
-                    <Header
-                        titleText={Message.REGISTER}
-                        thisComponent={this}
-                        backClick={this.onBack}
-                    />
-                    <Dialog
-                        content={this.props.state.showContent}
-                        type={'alert'}
-                        alertBtnText={Message.CONFIRM}
-                        modalVisible={this.props.state.showDialog}
-                        alertBtnStyle={{color: '#FFAA00',}}
-                        onClose={this._closeModal}
-                        alertBtnClick={this._closeModal}
-                        thisComponent={this}
-                    />
-                    <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_LABEL}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_PASSWORD_INPUT_RULE_LABEL}
-                                maxLength={12}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                secureTextEntry={true}
-                                value={this.props.state.registerPassword}
-                                onChangeText={(text) => {this.props.changeState({registerPassword: text})}}
-                                returnKeyType={'done'}/>
+                        <Header
+                            titleText={Message.REGISTER}
+                            thisComponent={this}
+                            backClick={this.onBack}
+                        />
+                        <Dialog
+                            content={this.props.state.showContent}
+                            type={'alert'}
+                            alertBtnText={Message.CONFIRM}
+                            modalVisible={this.props.state.showDialog}
+                            alertBtnStyle={{color: '#FFAA00',}}
+                            onClose={this._closeModal}
+                            alertBtnClick={this._closeModal}
+                            thisComponent={this}
+                        />
+                        <View style={{paddingHorizontal: ScreenUtil.scaleSize(30)}}>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_LABEL}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_PASSWORD_INPUT_RULE_LABEL}
+                                    maxLength={12}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    secureTextEntry={true}
+                                    value={this.props.state.registerPassword}
+                                    onChangeText={(text) => {this.props.changeState({registerPassword: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
+                            <View style={styles.inputRow}>
+                                <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_CONFIRM}</Text>
+                                <TextInput
+                                    style={styles.inputText}
+                                    placeholder={Message.REGISTER_PASSWORD_CONFIRM_INPUT_LABEL}
+                                    maxLength={12}
+                                    placeholderTextColor="#ABABAB"
+                                    underlineColorAndroid="transparent"
+                                    secureTextEntry={true}
+                                    value={this.props.state.registerConfirmedPassword}
+                                    onChangeText={(text) => {this.props.changeState({registerConfirmedPassword: text})}}
+                                    returnKeyType={'done'}/>
+                            </View>
+                            <View style={CustomStyles.separatorLine}/>
                         </View>
-                        <View style={CustomStyles.separatorLine}/>
-                        <View style={styles.inputRow}>
-                            <Text style={styles.inputLabel}>{Message.REGISTER_PASSWORD_CONFIRM}</Text>
-                            <TextInput
-                                style={styles.inputText}
-                                placeholder={Message.REGISTER_PASSWORD_CONFIRM_INPUT_LABEL}
-                                maxLength={12}
-                                placeholderTextColor="#ABABAB"
-                                underlineColorAndroid="transparent"
-                                secureTextEntry={true}
-                                value={this.props.state.registerConfirmedPassword}
-                                onChangeText={(text) => {this.props.changeState({registerConfirmedPassword: text})}}
-                                returnKeyType={'done'}/>
-                        </View>
-                        <View style={CustomStyles.separatorLine}/>
+                        <TouchableOpacity
+                            style={{
+                                marginTop: ScreenUtil.scaleSize(200),
+                            }}
+                            onPress={() => {
+                                this.checkData()
+                            }}>
+                            <Image source={require('../../img/register/confirm_btn.png')}
+                                   style={{
+                                       height: ScreenUtil.scaleSize(75),
+                                       width: ScreenUtil.scaleSize(550),
+                                       resizeMode: 'stretch',
+                                       alignSelf: 'center',
+                                   }}/>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={{
-                            marginTop: ScreenUtil.scaleSize(200),
-                        }}
-                        onPress={() => {
-                            this.checkData()
-                        }}>
-                        <Image source={require('../../img/register/confirm_btn.png')}
-                               style={{
-                                   height: ScreenUtil.scaleSize(75),
-                                   width: ScreenUtil.scaleSize(550),
-                                   resizeMode: 'stretch',
-                                   alignSelf: 'center',
-                               }}/>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </SafeAreaView>
         )
     }
 }

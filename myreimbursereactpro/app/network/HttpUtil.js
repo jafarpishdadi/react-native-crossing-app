@@ -172,6 +172,7 @@ export default class HttpUtil {
      * @param callback 回调函数
      */
     static fetchData(url, options, dispatch, callback) {
+        console.log(url);
         if(url == API.DOWNLOAD_ATTACHMENT_BY_DIR || url == API.UPLOAD_ATTACHMENT
             || url == API.COLLECT_BY_PIC|| url == API.GET_INVOICE_IMAGE){
             options.timeout = 60000;

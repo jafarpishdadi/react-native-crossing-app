@@ -43,7 +43,8 @@ import {
     editReimbursement,
     initReimbursement,
     deleteReimbursement,
-    recogniseVoiceRecord
+    recogniseVoiceRecord,
+    changeType
 } from "../../redux/actions/reimbursement/Reimbursement";
 import {ocrValidation} from "../../redux/actions/invoice/Invoice";
 import Permissions from "react-native-permissions";
@@ -56,12 +57,15 @@ import {
     back,
     navigateInvoiceDetails,
     navigateAddInvoice,
-    navigateScanQrCode
+    navigateScanQrCode,
+    navigateSelectCity
 } from "../../redux/actions/navigator/Navigator";
 import {changeState as changeAppState} from "../../redux/actions/App";
 import {CustomStyles} from "../../css/CustomStyles";
 import {CalendarList, LocaleConfig} from "react-native-calendars";
 import {TimePicker} from "react-native-wheel-picker-android";
+import SafeAreaView from "react-native-safe-area-view";
+import Base64Images from "../../utils/Base64Images";
 
 var RNBridgeModule = NativeModules.RNBridgeModule;
 var VoiceRecordModule = NativeModules.VoiceRecordModule;
@@ -181,6 +185,16 @@ class NewReimbursement extends Component {
     }
 
     /**
+     * 获取光标位置
+     */
+    getSelectIndex(event, inputStr) {
+        this.props.changeState({
+            selectionStart: Util.checkIsEmptyString(event.nativeEvent.selection.start) ? inputStr.length : event.nativeEvent.selection.start,
+            selectionEnd: Util.checkIsEmptyString(event.nativeEvent.selection.end) ? inputStr.length : event.nativeEvent.selection.end,
+        });
+    }
+
+    /**
      * 预览文件
      */
     previewDocument(item) {
@@ -228,7 +242,7 @@ class NewReimbursement extends Component {
                         areaStr += data[i];
                     }
                 }
-                let bizExpenseAttachmentIDList = [];
+                /*let bizExpenseAttachmentIDList = [];
                 let bizExpenseAttachmentURLList = [];
                 let bizExpenseTypeIDList = [];
                 let bizExpenseBillIDList = [];
@@ -266,19 +280,36 @@ class NewReimbursement extends Component {
                     bizExpenseTypeIDList: bizExpenseTypeIDList,
                     bizExpenseBillIDList: bizExpenseBillIDList,
                     deleteInvoiceList: deleteInvoiceList,
-                });
+                });*/
+                if (areaStr != this.props.newReimbursement.applyTypeName) {
+                    this.props.newReimbursement.bizExpenseTypeList.map(item => {
+                        item.code = '';
+                        item.name = '';
+                        item.expenseCodeTwo = '';
+                        item.expenseNameTwo = '';
+                        return item;
+                    })
 
-                var reimbursementDetail = this.props.newReimbursement.reimbursementTypeOriginalList.find(function (reimbursementType) {
-                    return reimbursementType.name === areaStr;
-                });
+                    this.props.changeState({
+                        totalAmount: (parseFloat(this.props.newReimbursement.totalAmount) - parseFloat(this.props.newReimbursement.travelBill ? this.props.newReimbursement.travelBill : 0)).toFixed(2),
+                    })
+
+                    this.props.changeType();
+
+                    var reimbursementDetail = this.props.newReimbursement.reimbursementTypeOriginalList.find(function (reimbursementType) {
+                        return reimbursementType.name === areaStr;
+                    });
+                    this.props.changeState({
+                        applyTypeCode: reimbursementDetail.templatNo,
+                    })
+                    this.props.selectReimType(areaStr);
+                    this.props.getExpenseType({
+                        templatNo: reimbursementDetail.templatNo,
+                        expenseRange: reimbursementDetail.expenseRange
+                    })
+                }
                 this.props.changeState({
-                    applyTypeCode: reimbursementDetail.templatNo,
-                    showPickerShadow: false
-                })
-                this.props.selectReimType(areaStr);
-                this.props.getExpenseType({
-                    templatNo: reimbursementDetail.templatNo,
-                    expenseRange: reimbursementDetail.expenseRange
+                    showPickerShadow: false,
                 })
             },
             onPickerCancel: () => {
@@ -859,7 +890,7 @@ class NewReimbursement extends Component {
         for (var j = 0; j < bizExpenseTypeList.length; j++) {
             if (expenseId == bizExpenseTypeList[j].expenseId) {
                 if (expenseDetail.length > 300) {
-                    expenseDetail = expenseDetail.substring(0, 299);
+                    expenseDetail = expenseDetail.substring(0, 300);
                 }
                 bizExpenseTypeList[j].detail = expenseDetail;
                 break;
@@ -909,12 +940,13 @@ class NewReimbursement extends Component {
         const arr = amount.split('.');
 
         //判断输入是否是数字
-        if (!Util.checkAllFloatNumber(amount)) {
-            Util.showToast(Message.NEW_RE_NUMBER_CHECK);
+        if (!Util.checkFloatNumber(amount)) {
+            Util.showToast(Message.NEW_RE_OVER_ZERO_AMOUNT);
             return;
         }
-        //整数最大12位
-        if (parseFloat(amount) >= 1000000000000) {
+
+        //整数最大7位
+        if (parseFloat(amount) >= 10000000) {
             return;
         }
 
@@ -941,9 +973,13 @@ class NewReimbursement extends Component {
             totalNum += parseInt(bizExpenseTypeList[j].totalNum == 0 ? 0 : bizExpenseTypeList[j].totalNum);
             totalAmount += parseFloat(bizExpenseTypeList[j].totalAmount == 0 ? 0 : bizExpenseTypeList[j].totalAmount);
         }
+
         if (this.props.newReimbursement.applyTypeCode == '1') {
-            totalAmount = totalAmount + parseFloat(this.props.newReimbursement.travelBill ? this.props.newReimbursement.travelBill : 0);
+            totalAmount = (totalAmount + parseFloat(this.props.newReimbursement.travelBill ? this.props.newReimbursement.travelBill : 0)).toFixed(2);
+        } else {
+            totalAmount = totalAmount.toFixed(2);
         }
+
         this.props.changeState({
             bizExpenseTypeList: bizExpenseTypeList,
             totalNum: totalNum + '',
@@ -992,7 +1028,7 @@ class NewReimbursement extends Component {
             return;
         }
         //整数最大12位
-        if (parseFloat(travelBillValue) >= 1000000000000) {
+        if (parseFloat(travelBillValue) >= 10000000) {
             return;
         }
 
@@ -1004,12 +1040,11 @@ class NewReimbursement extends Component {
         if (this.props.newReimbursement.applyTypeCode == '1') {
             var totalAmount = 0;
             var bizExpenseTypeList = this.props.newReimbursement.bizExpenseTypeList;
-            var bill =parseFloat(travelBillValue) == 'NaN' ? '' : parseFloat(travelBillValue) + '';
+            var bill = isNaN(parseFloat(travelBillValue)) ? '' : parseFloat(travelBillValue) + '';
             for (var j = 0; j < bizExpenseTypeList.length; j++) {
                 totalAmount += parseFloat(bizExpenseTypeList[j].totalAmount == 0 ? 0 : bizExpenseTypeList[j].totalAmount);
             }
-            totalAmount = parseFloat(totalAmount + bill).toFixed(2);
-            // totalAmount = totalAmount + parseFloat(travelBillValue == 0 ? 0 : travelBillValue).toFixed(2);
+            totalAmount = (parseFloat(totalAmount) + parseFloat(bill ? bill : 0)).toFixed(2);
             this.props.changeState({
                 travelBill: travelBillValue,
                 totalAmount: totalAmount + ''
@@ -1042,6 +1077,8 @@ class NewReimbursement extends Component {
      * 录音开始
      */
     startRecord(type, expenseId) {
+        const dismissKeyboard = require('dismissKeyboard');
+        dismissKeyboard();
         Permissions.checkMultiplePermissions(['microphone']).then(response => {
             // Response is one of: 'authorized', 'denied', 'restricted', or 'undetermined'
             if ((response.microphone != 'authorized' && response.microphone != 'undetermined')) {
@@ -1119,7 +1156,6 @@ class NewReimbursement extends Component {
                 voice: recordData.recordData,
                 length: recordData.recordData.length
             })
-            //console.log(recordPath);
         });
 
         this._clearCountTime();
@@ -1171,7 +1207,7 @@ class NewReimbursement extends Component {
     changeExpenseDesc(text) {
         var expenseDesc = "";
         if (text.length > 300) {
-            expenseDesc = text.substring(0, 299);
+            expenseDesc = text.substring(0, 300);
         } else {
             expenseDesc = text;
         }
@@ -1268,7 +1304,7 @@ class NewReimbursement extends Component {
                         placeholderTextColor="#ABABAB"
                         underlineColorAndroid="transparent"
                         keyboardType="numeric"
-                        maxLength={6}
+                        maxLength={16}
                         style={[styles.rowInput]}
                         value={this.props.newReimbursement.travelDays ? this.props.newReimbursement.travelDays + '' : ''}
                         onChangeText={(text) => {
@@ -1298,28 +1334,59 @@ class NewReimbursement extends Component {
                 <TouchableOpacity onPress={() => {
                     if (Platform.OS === 'android') {
                         RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                            this.props.changeState({showPickerShadow: true});
-                            this.createAreaPicker();
+                            /*this.props.changeState({showPickerShadow: true});
+                             this.createAreaPicker();*/
+                            dismissKeyboard();
+                            this.props.navigateSelectCity({
+                                targetCity: this.props.newReimbursement.targetCity,
+                                callback: (item) => {
+                                    this.props.changeState({
+                                        targetCity: item
+                                    })
+                                }
+                            });
                         });
                     } else {
-                        this.props.changeState({showPickerShadow: true});
-                        this.createAreaPicker();
+                        /*this.props.changeState({showPickerShadow: true});
+                         this.createAreaPicker();*/
+                        dismissKeyboard();
+                        this.props.navigateSelectCity({
+                            targetCity: this.props.newReimbursement.targetCity,
+                            callback: (item) => {
+                                this.props.changeState({
+                                    targetCity: item
+                                })
+                            }
+                        });
                     }
                 }}>
-                    <View style={styles.row}>
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                    }}>
                         <Text style={styles.rowLabel}>{Message.NEW_RE_BUSINESS_CITY}<Text
                             style={styles.requiredWord}>*</Text></Text>
-                        {
-                            Util.checkIsEmptyString(this.props.newReimbursement.targetCity) ? (
-                                <Text style={[styles.placeholderText]}
-                                      numberOfLines={1}>{Message.NEW_RE_ENTER_BUSINESS_CITY}</Text>
-                            ) : (
-                                <Text style={[styles.placeholderText, {color: '#666666'}]}
-                                      numberOfLines={1}>{this.props.newReimbursement.targetCity}</Text>
-                            )
-                        }
-
-                        <Image source={require('./../../img/common/arrow.png')} style={styles.arrowIcon}/>
+                        <Text style={{
+                            fontSize: ScreenUtil.setSpText(9),
+                            //marginLeft: ScreenUtil.scaleSize(90),
+                            color: this.props.newReimbursement.targetCity ? '#666666' : '#ABABAB',
+                            width: ScreenUtil.scaleSize(410),
+                            marginTop: ScreenUtil.scaleSize(20),
+                            marginBottom: ScreenUtil.scaleSize(20),
+                        }}>{this.props.newReimbursement.targetCity ? this.props.newReimbursement.targetCity : Message.NEW_RE_ENTER_BUSINESS_CITY}</Text>
+                        <View style={{
+                            flex: 1,
+                            height: ScreenUtil.scaleSize(80),
+                            justifyContent: 'center',
+                            alignItems: 'flex-end',
+                        }}>
+                            <Image source={require('./../../img/common/arrow.png')}
+                                   style={{
+                                       width: ScreenUtil.scaleSize(19),
+                                       height: ScreenUtil.scaleSize(30),
+                                       resizeMode: 'stretch',
+                                   }}/>
+                        </View>
                     </View>
                 </TouchableOpacity>
                 <View style={[CustomStyles.separatorLine, {paddingHorizontal: ScreenUtil.scaleSize(30)}]}/>
@@ -1330,17 +1397,18 @@ class NewReimbursement extends Component {
                 }}>
                     <TextInput editable={false} style={[styles.rowLabel, {padding: 0}]}
                                underlineColorAndroid="transparent"
-                               value={Message.NEW_RE_REIMBURSEMENT_DETAIL}/>
+                               value={Message.NEW_RE_REIMBURSEMENT_EVENT}/>
                     <View style={{
-                        marginTop: ScreenUtil.scaleSize(20),
-                        marginBottom: ScreenUtil.scaleSize(20),
-                        width: ScreenUtil.scaleSize(500),
+                        marginTop: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 24 : 20),
+                        marginBottom: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 16 : 20),
+                        width: ScreenUtil.scaleSize(450),
                     }}>
                         <TextInput
                             editable={true}
                             placeholder={Message.NEW_RE_ENTER_REIMBURSEMENT_DETAIL}
                             placeholderTextColor="#ABABAB"
                             underlineColorAndroid="transparent"
+                            onSelectionChange={(event)=> this.getSelectIndex(event, this.props.newReimbursement.expenseDesc)}
                             maxLength={300}
                             multiline={true}
                             style={{
@@ -1348,7 +1416,7 @@ class NewReimbursement extends Component {
                                 textAlign: 'left',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                marginLeft: ScreenUtil.scaleSize(90),
+                                //marginLeft: ScreenUtil.scaleSize(90),
                                 fontSize: ScreenUtil.setSpText(9),
                                 color: '#666666',
                                 textAlignVertical: 'center',
@@ -1411,18 +1479,19 @@ class NewReimbursement extends Component {
                                underlineColorAndroid="transparent"
                                value={Message.NEW_RE_REIMBURSEMENT_EVENT}/>
                     <View style={{
-                        marginTop: ScreenUtil.scaleSize(20),
-                        marginBottom: ScreenUtil.scaleSize(20),
-                        width: ScreenUtil.scaleSize(500),
+                        marginTop: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 24 : 20),
+                        marginBottom: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 16 : 20),
+                        width: ScreenUtil.scaleSize(450),
                     }}>
                         <TextInput
                             editable={true}
-                            placeholder={Message.NEW_RE_ENTER_REIMBURSEMENT_EVENT}
+                            placeholder={Message.NEW_RE_ENTER_REIMBURSEMENT_DETAIL}
                             placeholderTextColor="#ABABAB"
                             underlineColorAndroid="transparent"
+                            onSelectionChange={(event)=> this.getSelectIndex(event, this.props.newReimbursement.expenseDesc)}
                             style={{
                                 textAlign: 'left',
-                                marginLeft: ScreenUtil.scaleSize(90),
+                                //marginLeft: ScreenUtil.scaleSize(90),
                                 fontSize: ScreenUtil.setSpText(9),
                                 color: '#666666',
                                 textAlignVertical: 'center',
@@ -1478,7 +1547,7 @@ class NewReimbursement extends Component {
      * 渲染单个附件
      * @param item  附件数据
      */
-    renderAttachItem(item) {
+    renderAttachItem(item,index) {
         var fileTypeIcon;
         switch (item.fileType.toLowerCase()) {
             case 'docx':
@@ -1517,12 +1586,8 @@ class NewReimbursement extends Component {
         return (
             <View style={styles.deleteIconTouchView}>
                 <TouchableOpacity style={styles.deleteIconTouchAttach} onPress={() => {
-                    var attachList = [];
-                    for (var i = 0; i < this.props.newReimbursement.bizExpenseAttachmentList.length; i++) {
-                        if (item.fileName != this.props.newReimbursement.bizExpenseAttachmentList[i].fileName) {
-                            attachList.push(this.props.newReimbursement.bizExpenseAttachmentList[i]);
-                        }
-                    }
+                    var attachList = this.props.newReimbursement.bizExpenseAttachmentList;
+                    attachList.splice(index,1)
                     this.props.changeState({
                         bizExpenseAttachmentList: attachList,
                         bizExpenseAttachmentIDList: item.id ? this.props.newReimbursement.bizExpenseAttachmentIDList.concat(item.id)
@@ -1644,9 +1709,9 @@ class NewReimbursement extends Component {
                                               }
                                           }}>
                             <View style={styles.row}>
-                                <Text style={styles.rowLabel}>{Message.NEW_RE_COST_TYPE}<Text
+                                <Text style={styles.rowLabelDetail}>{Message.NEW_RE_COST_TYPE}<Text
                                     style={styles.requiredWord}>*</Text></Text>
-                                <View style={[styles.selectBtn, {marginLeft: ScreenUtil.scaleSize(70)}]}>
+                                <View style={styles.selectBtn}>
                                     {
                                         Util.checkIsEmptyString(item.expenseCodeTwo) ? (
                                             <Text style={[styles.selectBtnPlaceholderText, {flex: 1}]}
@@ -1666,23 +1731,23 @@ class NewReimbursement extends Component {
                             flexDirection: 'row',
                             alignItems: 'center',
                         }}>
-                            <TextInput editable={false} style={[styles.rowLabel, {padding: 0}]}
+                            <TextInput editable={false} style={[styles.rowLabelDetail, {padding: 0}]}
                                        underlineColorAndroid="transparent" value={Message.NEW_RE_COST_DETAIL}/>
                             <View style={{
-                                marginTop: ScreenUtil.scaleSize(20),
-                                marginBottom: ScreenUtil.scaleSize(20),
-                                width: ScreenUtil.scaleSize(480),
+                                marginTop: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 24 : 20),
+                                marginBottom: ScreenUtil.scaleSize(Platform.OS == 'ios' ? 16 : 20),
+                                width: ScreenUtil.scaleSize(430),
                             }}>
                                 <TextInput
                                     editable={true}
                                     placeholder={Message.NEW_RE_ENTER_COST_DETAIL}
                                     placeholderTextColor="#ABABAB"
                                     underlineColorAndroid="transparent"
+                                    onSelectionChange={(event)=> this.getSelectIndex(event, item.detail)}
                                     maxLength={300}
                                     multiline={true}
                                     style={{
                                         textAlign: 'left',
-                                        marginLeft: ScreenUtil.scaleSize(70),
                                         fontSize: ScreenUtil.setSpText(9),
                                         color: '#666666',
                                         textAlignVertical: 'center',
@@ -1742,11 +1807,12 @@ class NewReimbursement extends Component {
                                     <Image source={require('./../../img/reimbursement/add.png')}
                                            style={styles.addIcon}/>
                                     <Text
-                                        style={[styles.rowLabel, {
+                                        style={{
                                             color: '#ABABAB',
-                                            textAlign: 'right',
+                                            textAlignVertical: 'center',
+                                            fontSize: ScreenUtil.setSpText(9),
                                             marginLeft: ScreenUtil.scaleSize(5)
-                                        }]}>{Message.NEW_RE_ADD_INVOICE}</Text>
+                                        }}>{Message.NEW_RE_ADD_INVOICE}</Text>
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -1757,13 +1823,13 @@ class NewReimbursement extends Component {
 
                         <View style={styles.row}>
                             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                                <Text style={styles.rowLabel}>{Message.NEW_RE_INVOICE_DETAIL_AMOUNT}<Text
+                                <Text style={styles.rowLabelDetail}>{Message.NEW_RE_INVOICE_DETAIL_AMOUNT}<Text
                                     style={styles.requiredWord}>*</Text></Text>
                             </TouchableWithoutFeedback>
 
                             <TextInput
                                 editable={true}
-                                style={[styles.rowInput, {marginLeft: ScreenUtil.scaleSize(70)}]}
+                                style={styles.rowInput}
                                 maxLength={15}
                                 placeholderTextColor="#ABABAB"
                                 underlineColorAndroid="transparent"
@@ -1783,13 +1849,13 @@ class NewReimbursement extends Component {
                         <View style={[CustomStyles.separatorLine, {paddingHorizontal: ScreenUtil.scaleSize(30)}]}/>
                         <View style={styles.row}>
                             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                                <Text style={styles.rowLabel}>{Message.NEW_RE_INVOICE_ACCOUNT}<Text
+                                <Text style={styles.rowLabelDetail}>{Message.NEW_RE_INVOICE_ACCOUNT}<Text
                                     style={styles.requiredWord}>*</Text></Text>
                             </TouchableWithoutFeedback>
 
                             <TextInput
                                 editable={true}
-                                style={[styles.rowInput, {marginLeft: ScreenUtil.scaleSize(70)}]}
+                                style={styles.rowInput}
                                 placeholderTextColor="#ABABAB"
                                 underlineColorAndroid="transparent"
                                 keyboardType={'numeric'}
@@ -2014,7 +2080,7 @@ class NewReimbursement extends Component {
     /**
      * 返回当前时分
      */
-    getNowTime() {
+    getNowTime(isStart) {
         const d = new Date();
         let hour = d.getHours();
         let minute = d.getMinutes();
@@ -2023,6 +2089,17 @@ class NewReimbursement extends Component {
         }
         if (minute < 10) {
             minute = '0' + minute;
+        }
+        if (isStart) {
+            this.props.changeState({
+                startHour: hour,
+                startMinute: minute
+            });
+        } else {
+            this.props.changeState({
+                endHour: hour,
+                endMinute: minute
+            });
         }
         return hour + ':' + minute;
     }
@@ -2069,23 +2146,29 @@ class NewReimbursement extends Component {
         if (isStart) {
             if (!this.props.newReimbursement.startTimeSelected) {
                 if (!this.props.newReimbursement.selectedStartDate) {
-                    calendarTime = this.getNowTime();
+                    calendarTime = this.getNowTime(true);
                 } else {
                     calendarTime = this.props.newReimbursement.selectedStartDate.substring(11, 16);
                 }
             } else {
                 calendarTime = this.props.newReimbursement.startTimeSelected;
             }
+            this.props.changeState({
+                startTimeSelected: calendarTime
+            });
         } else {
             if (!this.props.newReimbursement.endTimeSelected) {
                 if (!this.props.newReimbursement.selectedEndDate) {
-                    calendarTime = this.getNowTime();
+                    calendarTime = this.getNowTime(false);
                 } else {
                     calendarTime = this.props.newReimbursement.selectedEndDate.substring(11, 16);
                 }
             } else {
                 calendarTime = this.props.newReimbursement.endTimeSelected;
             }
+            this.props.changeState({
+                endTimeSelected: calendarTime
+            });
         }
         return calendarTime;
     }
@@ -2097,6 +2180,7 @@ class NewReimbursement extends Component {
     onTimeSelected(date) {
         let hour = '';
         let minute = '';
+
         if (date.getHours() < 10) {
             hour = '0' + date.getHours();
         } else {
@@ -2165,6 +2249,178 @@ class NewReimbursement extends Component {
         }
     }
 
+    /**
+     * 差旅报销单点击事件
+     */
+    startOrEndDatePress() {
+        let startDateSelected = this.props.newReimbursement.startDateSelected;
+        let endDateSelected = this.props.newReimbursement.endDateSelected;
+        let startTimeSelected = this.props.newReimbursement.startTimeSelected;
+        let endTimeSelected = this.props.newReimbursement.endTimeSelected;
+        let startDateTimeSelected = startDateSelected + ' ' + startTimeSelected;
+        let endDateTimeSelected = endDateSelected + ' ' + endTimeSelected;
+        const d = new Date();
+        const year = d.getFullYear() + '-';
+        let month = d.getMonth() + 1;
+        let day = d.getDate();
+        let hour = d.getHours();
+        let minute = d.getMinutes();
+        if (month < 10) {
+            month = '0' + month + '-';
+        } else {
+            month = month + '-';
+        }
+        if (day < 10) {
+            day = '0' + day;
+        } else {
+            day = day + '';
+        }
+
+        if (hour < 10) {
+            hour = '0' + hour;
+        }
+        if (minute < 10) {
+            minute = '0' + minute;
+        }
+
+        if (this.props.newReimbursement.isStartDateTimeFlag) {
+            if (startDateSelected == '' && startTimeSelected == '') {
+                startDateTimeSelected = year + month + day + ' ' + hour + ':' + minute;
+            }
+            if (startDateSelected == '' && startTimeSelected != '') {
+                startDateTimeSelected = year + month + day + ' ' + startTimeSelected;
+            }
+            if (startDateSelected != '' && startTimeSelected == '') {
+                startDateTimeSelected = startDateSelected + ' ' + hour + ':' + minute;
+            }
+        }
+
+        if (this.props.newReimbursement.isEndDateTimeFlag) {
+            if (endDateSelected == '' && endTimeSelected == '') {
+                endDateTimeSelected = year + month + day + ' ' + hour + ':' + minute;
+            }
+            if (endDateSelected == '' && endTimeSelected != '') {
+                endDateTimeSelected = year + month + day + ' ' + endTimeSelected;
+            }
+            if (endDateSelected != '' && endTimeSelected == '') {
+                endDateTimeSelected = endDateSelected + ' ' + hour + ':' + minute;
+            }
+        }
+
+        this.props.changeState({
+            isShowCalendar: true,
+            selectedTempDate: null,
+        });
+
+        if (this.props.newReimbursement.isStartDateTimeFlag) {
+            this.props.changeState({
+                isModalBoxOpen: false,
+                selectedStartDate: startDateTimeSelected
+            });
+        }
+        if (this.props.newReimbursement.isEndDateTimeFlag) {
+            this.props.changeState({
+                isModalBoxOpen: false,
+                selectedEndDate: endDateTimeSelected
+            });
+        }
+    }
+
+    /**
+     * 日历选中天触发事件
+     * @param day
+     */
+    calendarListDayPress(day) {
+        let year = day.year;
+        let month = day.month;
+        let selectedDay = day.day;
+        if (month < 10) {
+            month = '0' + month;
+        }
+        if (selectedDay < 10) {
+            selectedDay = '0' + selectedDay;
+        }
+        const showDateSelected = year + '年' + month + '月' + selectedDay + '日';
+        this.props.changeState({
+            selectedTempDate: day.dateString,
+        })
+        if (this.props.newReimbursement.isStartDateTimeFlag) {
+            this.props.changeState({
+                startDateSelected: day.dateString,
+                calendarDate: showDateSelected,
+                showStartDateSelected: showDateSelected,
+                isShowCalendar: false
+            })
+        }
+        if (this.props.newReimbursement.isEndDateTimeFlag) {
+            this.props.changeState({
+                endDateSelected: day.dateString,
+                calendarDate: showDateSelected,
+                showEndDateSelected: showDateSelected,
+                isShowCalendar: false
+            })
+        }
+    }
+
+    /**
+     * 触发类型选择器
+     * @constructor
+     */
+    typePickerPress() {
+        if (Platform.OS === 'android') {
+            RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                if (Util.checkIsEmptyString(this.props.newReimbursement.reimbursementTypeList) ||
+                    this.props.newReimbursement.reimbursementTypeList.length == 0) {
+                    this.props.changeState({
+                        showPickerShadow: false
+                    });
+                } else {
+                    this.props.changeState({
+                        showPickerShadow: true
+                    });
+                }
+                this.createTypePicker();
+            });
+        } else {
+            if (Util.checkIsEmptyString(this.props.newReimbursement.reimbursementTypeList) ||
+                this.props.newReimbursement.reimbursementTypeList.length == 0) {
+                this.props.changeState({
+                    showPickerShadow: false
+                });
+            } else {
+                this.props.changeState({
+                    showPickerShadow: true
+                });
+            }
+            this.createTypePicker();
+        }
+    }
+
+    /**
+     * 触发部门选择器
+     */
+    departmentPickerPress() {
+        if (Platform.OS === 'android') {
+            RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
+                if (Util.checkIsEmptyString(this.props.newReimbursement.organizationList) ||
+                    this.props.newReimbursement.organizationList.length == 0) {
+                    this.props.changeState({showPickerShadow: false});
+                } else {
+                    this.props.changeState({showPickerShadow: true});
+                }
+                this.createDepartmentPicker();
+            });
+        } else {
+            if (Util.checkIsEmptyString(this.props.newReimbursement.organizationList) ||
+                this.props.newReimbursement.organizationList.length == 0) {
+                this.props.changeState({showPickerShadow: false});
+            } else {
+                this.props.changeState({showPickerShadow: true});
+            }
+            this.createDepartmentPicker();
+        }
+    }
+
     render() {
         const dismissKeyboard = require('dismissKeyboard');
         let current;
@@ -2176,9 +2432,12 @@ class NewReimbursement extends Component {
             tempDate = this.props.newReimbursement.selectedEndDate;
         }
         current = tempDate ? new Date(tempDate.substring(0, 4), tempDate.substring(5, 7) - 1, tempDate.substring(8, 10)) : null;
+        if (this.props.newReimbursement.selectedTempDate) {
+            current = this.props.newReimbursement.selectedTempDate;
+        }
         return (
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
+                <SafeAreaView style={styles.container}>
                     <BackDialog
                         thisComponent={this}
                         isShow={this.props.newReimbursement.showPickerShadow}
@@ -2275,7 +2534,9 @@ class NewReimbursement extends Component {
                                 selectedInvoice: selectedInvoice
                             });
                         }}
-                        cancelClick={this._closeModal.bind(this)}/>
+                        cancelClick={this._closeModal.bind(this)}
+                        backClick={() => this.props.changeState({showDialog: false})}
+                    />
 
 
                     {
@@ -2293,6 +2554,13 @@ class NewReimbursement extends Component {
                                 <TouchableWithoutFeedback onPress={() => {
                                     this.props.changeState({
                                         isModalBoxOpen: false,
+                                        selectedTempDate: null,
+                                        calendarDate: '',
+                                        startDateSelected: '',
+                                        showStartDateSelected: '',
+                                        endDateSelected: '',
+                                        showEndDateSelected: '',
+                                        isShowCalendar: true,
                                     })
                                 }} style={{
                                     position: 'absolute',
@@ -2335,7 +2603,7 @@ class NewReimbursement extends Component {
                                                     borderColor: 'orange',
                                                     borderBottomWidth: this.props.newReimbursement.isShowCalendar ? ScreenUtil.scaleSize(4) : 0,
                                                     alignItems: 'center',
-                                                    justifyContent:'center'
+                                                    justifyContent: 'center'
                                                 }}>
                                                     <Text style={
                                                         this.getCurrentCalendarColor()
@@ -2355,9 +2623,9 @@ class NewReimbursement extends Component {
                                                     marginLeft: ScreenUtil.scaleSize(40),
                                                     height: ScreenUtil.scaleSize(90),
                                                     borderColor: 'orange',
-                                                    borderBottomWidth:  this.props.newReimbursement.isShowCalendar ? 0 : ScreenUtil.scaleSize(4),
+                                                    borderBottomWidth: this.props.newReimbursement.isShowCalendar ? 0 : ScreenUtil.scaleSize(4),
                                                     alignItems: 'center',
-                                                    justifyContent:'center'
+                                                    justifyContent: 'center'
                                                 }}>
                                                     <Text style={
                                                         this.getCurrentTimeColor()
@@ -2371,77 +2639,7 @@ class NewReimbursement extends Component {
                                         </View>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                let startDateSelected = this.props.newReimbursement.startDateSelected;
-                                                let endDateSelected = this.props.newReimbursement.endDateSelected;
-                                                let startTimeSelected = this.props.newReimbursement.startTimeSelected;
-                                                let endTimeSelected = this.props.newReimbursement.endTimeSelected;
-                                                let startDateTimeSelected = startDateSelected + ' ' + startTimeSelected;
-                                                let endDateTimeSelected = endDateSelected + ' ' + endTimeSelected;
-                                                const d = new Date();
-                                                const year = d.getFullYear() + '-';
-                                                let month = d.getMonth() + 1;
-                                                let day = d.getDate();
-                                                let hour = d.getHours();
-                                                let minute = d.getMinutes();
-                                                if (month < 10) {
-                                                    month = '0' + month + '-';
-                                                } else {
-                                                    month = month + '-';
-                                                }
-                                                if (day < 10) {
-                                                    day = '0' + day;
-                                                } else {
-                                                    day = day + 1 + '';
-                                                }
-
-                                                if (hour < 10) {
-                                                    hour = '0' + hour;
-                                                }
-                                                if (minute < 10) {
-                                                    minute = '0' + minute;
-                                                }
-
-                                                if (this.props.newReimbursement.isStartDateTimeFlag) {
-                                                    if (startDateSelected == '' && startTimeSelected == '') {
-                                                        startDateTimeSelected = year + month + day + ' ' + hour + ':' + minute;
-                                                    }
-                                                    if (startDateSelected == '' && startTimeSelected != '') {
-                                                        startDateTimeSelected = year + month + day + ' ' + startTimeSelected;
-                                                    }
-                                                    if (startDateSelected != '' && startTimeSelected == '') {
-                                                        startDateTimeSelected = startDateSelected + ' ' + hour + ':' + minute;
-                                                    }
-                                                }
-
-                                                if (this.props.newReimbursement.isEndDateTimeFlag) {
-                                                    if (endDateSelected == '' && endTimeSelected == '') {
-                                                        endDateTimeSelected = year + month + day + ' ' + hour + ':' + minute;
-                                                    }
-                                                    if (endDateSelected == '' && endTimeSelected != '') {
-                                                        endDateTimeSelected = year + month + day + ' ' + endTimeSelected;
-                                                    }
-                                                    if (endDateSelected != '' && endTimeSelected == '') {
-                                                        endDateTimeSelected = endDateSelected + ' ' + hour + ':' + minute;
-                                                    }
-                                                }
-
-                                                this.props.changeState({
-                                                    isShowCalendar: true
-                                                });
-
-                                                if (this.props.newReimbursement.isStartDateTimeFlag) {
-                                                    this.props.changeState({
-                                                        isModalBoxOpen: false,
-                                                        selectedStartDate: startDateTimeSelected
-                                                    });
-                                                }
-                                                if (this.props.newReimbursement.isEndDateTimeFlag) {
-                                                    this.props.changeState({
-                                                        isModalBoxOpen: false,
-                                                        selectedEndDate: endDateTimeSelected
-                                                    });
-                                                }
-
+                                                this.startOrEndDatePress();
                                             }}
                                         >
                                             <View style={{
@@ -2475,32 +2673,7 @@ class NewReimbursement extends Component {
                                                 showScrollIndicator={true}
                                                 showWeekNumbers={true}
                                                 onDayPress={(day) => {
-                                                    let year = day.year;
-                                                    let month = day.month;
-                                                    let selectedDay = day.day;
-                                                    if (month < 10) {
-                                                        month = '0' + month;
-                                                    }
-                                                    if (selectedDay < 10) {
-                                                        selectedDay = '0' + selectedDay;
-                                                    }
-                                                    const showDateSelected = year + '年' + month + '月' + selectedDay + '日';
-                                                    if (this.props.newReimbursement.isStartDateTimeFlag) {
-                                                        this.props.changeState({
-                                                            startDateSelected: day.dateString,
-                                                            calendarDate: showDateSelected,
-                                                            showStartDateSelected: showDateSelected,
-                                                            isShowCalendar: false
-                                                        })
-                                                    }
-                                                    if (this.props.newReimbursement.isEndDateTimeFlag) {
-                                                        this.props.changeState({
-                                                            endDateSelected: day.dateString,
-                                                            calendarDate: showDateSelected,
-                                                            showEndDateSelected: showDateSelected,
-                                                            isShowCalendar: false
-                                                        })
-                                                    }
+                                                    this.calendarListDayPress(day);
                                                 }}
                                                 markedDates={{
                                                     [this.props.newReimbursement.isStartDateTimeFlag ?
@@ -2536,9 +2709,8 @@ class NewReimbursement extends Component {
                     {this.props.newReimbursement.isRecording === true ? (
                         <View style={styles.recordingView}>
                             <View style={styles.recordingRow}>
-                                <Image source={require('./../../img/reimbursement/microPhone.png')}
+                                <Image source={{uri:Base64Images.VOICE}}
                                        style={styles.microPhoneIcon}/>
-                                <View style={styles.recordingItem}/>
                             </View>
                             <Text style={{
                                 fontSize: ScreenUtil.setSpText(9),
@@ -2557,33 +2729,7 @@ class NewReimbursement extends Component {
                             backgroundColor: 'white'
                         }}>
                             <TouchableOpacity style={{flex: 1}} onPress={() => {
-                                if (Platform.OS === 'android') {
-                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                                        if (Util.checkIsEmptyString(this.props.newReimbursement.reimbursementTypeList) ||
-                                            this.props.newReimbursement.reimbursementTypeList.length == 0) {
-                                            this.props.changeState({
-                                                showPickerShadow: false
-                                            });
-                                        } else {
-                                            this.props.changeState({
-                                                showPickerShadow: true
-                                            });
-                                        }
-                                        this.createTypePicker();
-                                    });
-                                } else {
-                                    if (Util.checkIsEmptyString(this.props.newReimbursement.reimbursementTypeList) ||
-                                        this.props.newReimbursement.reimbursementTypeList.length == 0) {
-                                        this.props.changeState({
-                                            showPickerShadow: false
-                                        });
-                                    } else {
-                                        this.props.changeState({
-                                            showPickerShadow: true
-                                        });
-                                    }
-                                    this.createTypePicker();
-                                }
+                                this.typePickerPress();
                             }}>
                                 <View style={styles.row}>
                                     <Text style={styles.rowLabel}>{Message.NEW_RE_REIMBURSEMENT_TYPE}<Text
@@ -2603,25 +2749,7 @@ class NewReimbursement extends Component {
                             <View style={[CustomStyles.separatorLine, {paddingHorizontal: ScreenUtil.scaleSize(30)}]}/>
 
                             <TouchableOpacity style={{flex: 1}} onPress={() => {
-                                if (Platform.OS === 'android') {
-                                    RNBridgeModule.checkFloatWindowOpAllowed((result)=> {
-                                        if (Util.checkIsEmptyString(this.props.newReimbursement.organizationList) ||
-                                            this.props.newReimbursement.organizationList.length == 0) {
-                                            this.props.changeState({showPickerShadow: false});
-                                        } else {
-                                            this.props.changeState({showPickerShadow: true});
-                                        }
-                                        this.createDepartmentPicker();
-                                    });
-                                } else {
-                                    if (Util.checkIsEmptyString(this.props.newReimbursement.organizationList) ||
-                                        this.props.newReimbursement.organizationList.length == 0) {
-                                        this.props.changeState({showPickerShadow: false});
-                                    } else {
-                                        this.props.changeState({showPickerShadow: true});
-                                    }
-                                    this.createDepartmentPicker();
-                                }
+                                this.departmentPickerPress();
                             }}>
                                 <View style={styles.row}>
                                     <Text style={styles.rowLabel}>{Message.NEW_RE_DEPARTMENT}<Text
@@ -2655,12 +2783,12 @@ class NewReimbursement extends Component {
                                             <Image source={require('./../../img/reimbursement/add.png')}
                                                    style={styles.addIcon}/>
                                             <Text
-                                                style={[styles.rowLabel, {
+                                                style={{
                                                     color: '#ABABAB',
-                                                    width: ScreenUtil.scaleSize(175),
-                                                    textAlign: 'right',
+                                                    fontSize: ScreenUtil.setSpText(9),
+                                                    textAlignVertical: 'center',
                                                     marginLeft: ScreenUtil.scaleSize(5)
-                                                }]}>{Message.NEW_RE_ADD_DETAIL}</Text>
+                                                }}>{Message.NEW_RE_ADD_DETAIL}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 </View>
@@ -2714,6 +2842,7 @@ class NewReimbursement extends Component {
                                     <TouchableOpacity onPress={() => {
                                         if (this.props.newReimbursement.bizExpenseAttachmentList.length < 20) {
                                             //this.openImagePicker();
+                                            dismissKeyboard();
                                             if (Platform.OS == 'ios') {
                                                 this.openImagePicker();
                                             } else {
@@ -2748,18 +2877,19 @@ class NewReimbursement extends Component {
                                             <Image source={require('./../../img/reimbursement/upload.png')}
                                                    style={styles.addIcon}/>
                                             <Text
-                                                style={[styles.rowLabel, {
+                                                style={{
                                                     color: '#ABABAB',
-                                                    textAlign: 'right',
+                                                    fontSize: ScreenUtil.setSpText(9),
+                                                    textAlignVertical: 'center',
                                                     marginLeft: ScreenUtil.scaleSize(5)
-                                                }]}>{Message.NEW_RE_UPLOAD_ATTACHMENT}</Text>
+                                                }}>{Message.NEW_RE_UPLOAD_ATTACHMENT}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 </View>
                             </TouchableWithoutFeedback>
 
                             <View style={styles.attachListView}>
-                                {this.props.newReimbursement.bizExpenseAttachmentList.map((item) => this.renderAttachItem(item))}
+                                {this.props.newReimbursement.bizExpenseAttachmentList.map((item,index) => this.renderAttachItem(item,index))}
                             </View>
                         </View>
                         <View style={styles.separatorView}></View>
@@ -2793,7 +2923,7 @@ class NewReimbursement extends Component {
                         thisComponent={this}
                         onClose={this._onClose}
                     />
-                </View>
+                </SafeAreaView>
             </TouchableWithoutFeedback>
         )
     }
@@ -2833,6 +2963,8 @@ function mapDispatchToProps(dispatch) {
         ocrValidation: ocrValidation,
         invoiceDetailsChangeState: invoiceDetailsChangeState,
         changeAppState: changeAppState,
+        navigateSelectCity: navigateSelectCity,
+        changeType: changeType,
     }, dispatch);
 }
 
@@ -2841,7 +2973,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(NewReimbursement);
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F3F3'
+        backgroundColor: 'white'
     },
     sclView: {
         //flex: 1,
@@ -2851,12 +2983,12 @@ const styles = StyleSheet.create({
         position: 'absolute',
         alignItems: 'center',
         justifyContent: 'center',
-        width: ScreenUtil.scaleSize(300),
-        height: ScreenUtil.scaleSize(300),
+        width: ScreenUtil.scaleSize(320),
+        height: ScreenUtil.scaleSize(320),
         zIndex: 20,
         backgroundColor: 'black',
         top: deviceHeight / 3,
-        left: (deviceWidth - ScreenUtil.scaleSize(300)) / 2,
+        left: (deviceWidth - ScreenUtil.scaleSize(320)) / 2,
         opacity: 0.7,
         borderRadius: ScreenUtil.scaleSize(10),
     },
@@ -2872,7 +3004,7 @@ const styles = StyleSheet.create({
         width: ScreenUtil.scaleSize(30)
     },
     microPhoneIcon: {
-        width: ScreenUtil.scaleSize(95),
+        width: ScreenUtil.scaleSize(165),
         height: ScreenUtil.scaleSize(150),
         resizeMode: 'contain'
     },
@@ -2888,14 +3020,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     rowLabel: {
-        width: ScreenUtil.scaleSize(130),
+        width: ScreenUtil.scaleSize(210),
+        fontSize: ScreenUtil.setSpText(9),
+        textAlignVertical: 'center',
+        color: '#666666'
+    },
+    rowLabelDetail: {
+        width: ScreenUtil.scaleSize(190),
         fontSize: ScreenUtil.setSpText(9),
         textAlignVertical: 'center',
         color: '#666666'
     },
     placeholderText: {
         flex: 1,
-        marginLeft: ScreenUtil.scaleSize(90),
+        //marginLeft: ScreenUtil.scaleSize(90),
         fontSize: ScreenUtil.setSpText(9),
         color: '#ABABAB',
     },
@@ -2904,7 +3042,7 @@ const styles = StyleSheet.create({
         height: ScreenUtil.scaleSize(80),
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: ScreenUtil.scaleSize(90),
+        //marginLeft: ScreenUtil.scaleSize(90),
     },
     selectBtnPlaceholderText: {
         fontSize: ScreenUtil.setSpText(9),
@@ -3091,7 +3229,7 @@ const styles = StyleSheet.create({
     rowInput: {
         flex: 1,
         textAlign: 'left',
-        marginLeft: ScreenUtil.scaleSize(90),
+        //marginLeft: ScreenUtil.scaleSize(90),
         fontSize: ScreenUtil.setSpText(9),
         padding: 0,
         color: '#666666',

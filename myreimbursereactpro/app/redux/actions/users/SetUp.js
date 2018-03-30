@@ -10,6 +10,10 @@ import {changeState} from "./Login";
 import {changeState as changeHomePageState} from '../../actions/homePage/HomePage';
 import {changeState as invoiceChangeState} from '../../actions/invoice/Invoice';
 import Store from 'react-native-simple-store';
+import {
+    NativeModules,
+} from "react-native";
+var RNBridgeModule = NativeModules.RNBridgeModule;
 export const setUpAction = (state) => {
     return {
         type: types.SET_UP_CHANGE_STATE,
@@ -68,6 +72,7 @@ export const logoutTo = () => {
         dispatch(setUpAction({
             isLoading: true,
         }))
+        RNBridgeModule.updateBadge(0)
         const interval = setInterval(() => {
             if (!getState().Invoice.isLoading && !getState().Invoice.isLoading) {
                 clearInterval(interval);

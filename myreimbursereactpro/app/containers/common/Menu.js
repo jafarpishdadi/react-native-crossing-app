@@ -2,7 +2,7 @@
  * 选择新建报销单、差旅单、借款单
  * Created by sky.qian on 2/1/2018.
  */
-import React, { Component } from 'react';
+import React, {Component} from "react";
 import {
 	View,
 	Text,
@@ -13,11 +13,14 @@ import {
 	TouchableOpacity,
 	Animated,
 	TouchableWithoutFeedback,
-} from 'react-native';
-//import { BlurView } from 'react-native-blur';
-import ScreenUtil, {deviceHeight, deviceWidth} from '../../utils/ScreenUtil';
-import PropTypes from 'prop-types';
+	Platform,
+	DeviceEventEmitter,
+} from "react-native";
+import ScreenUtil, {deviceHeight, deviceWidth} from "../../utils/ScreenUtil";
+import PropTypes from "prop-types";
 import Message from "../../constant/Message";
+import {BlurView} from "react-native-blur";
+import Util from "../../utils/Util";
 
 export default class Menu extends Component {
 
@@ -35,14 +38,27 @@ export default class Menu extends Component {
 			reimbursementBottom: new Animated.Value(ScreenUtil.scaleSize(-150)),
 			loanBottom: new Animated.Value(ScreenUtil.scaleSize(-150)),
 			travelBottom: new Animated.Value(ScreenUtil.scaleSize(-150)),
+			currentTab: '',
 		};
 	}
 
-	/*componentDidMount() {
+	componentDidMount() {
 		this.setState({ viewRef: findNodeHandle(this.backgroundImage) });
-	}*/
+	}
 
 	close = function() {
+		if (Platform.OS != 'ios') {
+			if (this.state.currentTab == 'HomePage') {
+				DeviceEventEmitter.emit('hideBlurTabOne');
+			} else if (this.state.currentTab == 'Invoice') {
+				DeviceEventEmitter.emit('hideBlurTabTwo');
+			} else if (this.state.currentTab == 'Report') {
+				DeviceEventEmitter.emit('hideBlurTabThree');
+			} else if (this.state.currentTab == 'Mine') {
+				DeviceEventEmitter.emit('hideBlurTabFour');
+			}
+			DeviceEventEmitter.emit('hideBlurTabBar');
+		}
 		Animated.parallel([
 			Animated.timing(
 				this.state.reimbursementBottom,
@@ -73,9 +89,10 @@ export default class Menu extends Component {
 		})
 	}
 
-	open =  function() {
+	open =  function(currentTab) {
 		this.setState({
 			isShow: true,
+			currentTab: currentTab,
 		})
 		Animated.parallel([
 			Animated.timing(
@@ -109,13 +126,24 @@ export default class Menu extends Component {
 		return (
 			<Modal
 				animationType={"none"}
-				//transparent={true}
+				transparent={true}
 				visible={this.state.isShow}
+				onRequestClose={this.close.bind(this)}
 			>
 				<View
 					style={styles.container}
-					//ref={(img) => {this.backgroundImage = img}}
-				/>
+					ref={(img) => {this.backgroundImage = img}}
+				>
+
+				</View>
+				<BlurView
+					style={{
+						position: "absolute",
+						top: 0, left: 0, bottom: 0, right: 0,
+					}}
+					viewRef={this.state.viewRef}
+					blurType="light"
+					blurAmount={10}/>
 				<Animated.View style={{
 					width: ScreenUtil.scaleSize(200),
 					alignItems: 'center',
@@ -134,14 +162,14 @@ export default class Menu extends Component {
 							       resizeMode: 'contain',
 						       }}/>
 					</TouchableWithoutFeedback>
-					<Text style={styles.text}>{Message.REIMBURSEMENT}</Text>
+					<Text style={styles.text}>{Message.REIMBURSEMENT_ORDER}</Text>
 				</Animated.View>
 				<Animated.View style={{
 					width: ScreenUtil.scaleSize(200),
 					alignItems: 'center',
 					position: 'absolute',
 					bottom: this.state.loanBottom,
-					left: ScreenUtil.scaleSize(275),
+					left: deviceWidth / 2 - ScreenUtil.scaleSize(100),
 				}}>
 					<TouchableWithoutFeedback onPress={() => {
 						this.close();
@@ -181,7 +209,7 @@ export default class Menu extends Component {
 					height: ScreenUtil.scaleSize(96),
 					position: 'absolute',
 					left: (deviceWidth - ScreenUtil.scaleSize(96)) / 2,
-					bottom: 0,
+					bottom: ScreenUtil.scaleSize(Util.isIphoneX() ? 68 : 0),
 					justifyContent: 'center',
 					alignItems: 'center',
 				}} onPress={() => {
@@ -206,6 +234,7 @@ const styles = StyleSheet.create({
 		width: deviceWidth,
 		top: 0,
 		left: 0,
+		backgroundColor: 'rgba(255, 255, 255, 0)'
 	},
 	absolute: {
 		position: "absolute",

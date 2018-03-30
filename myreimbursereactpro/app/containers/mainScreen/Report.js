@@ -16,11 +16,13 @@ import {
     FlatList,
     PixelRatio,
     processColor,
-    DeviceEventEmitter
+    DeviceEventEmitter,
+    findNodeHandle,
 } from 'react-native';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {BarChart} from 'react-native-charts-wrapper';
+import {BlurView} from "react-native-blur";
 import Header from '../../containers/common/CommonHeader';
 import ScreenUtil, {deviceWidth, deviceHeight} from '../../utils/ScreenUtil';
 import Message from '../../constant/Message';
@@ -38,6 +40,7 @@ import {
 } from '../../redux/actions/report/Report';
 import ModalDropdown from 'react-native-modal-dropdown';
 import CommonLoading from "./../common/CommonLoading";
+import {changeState as changeAppState} from '../../redux/actions/App';
 
 class Report extends Component {
     static navigationOptions = {
@@ -51,6 +54,7 @@ class Report extends Component {
         tabBarOnPress: ({route, index}, jumpToIndex) => {
             if (route.routeName === 'Report') {
                 DeviceEventEmitter.emit('reloadReport');
+                DeviceEventEmitter.emit('setReportTab');
             }
             jumpToIndex(index);
         }
@@ -63,14 +67,29 @@ class Report extends Component {
         }
         //监听报表
         this.reportEventListener = DeviceEventEmitter.addListener('reloadReport', this.props.changeToReportTab);
+        this.hideBlurSubscription = DeviceEventEmitter.addListener('hideBlurTabThree', ()=>this.blurAction('0'));
+        this.showBlurSubscription = DeviceEventEmitter.addListener('showBlurTabThree', ()=>this.blurAction('1'));
+        this.setReportTab = DeviceEventEmitter.addListener('setReportTab', ()=>this.setTab());
     }
 
     constructor(props) {
         super(props);
     }
 
-    componentWillUnmount(){
+    componentWillUnmount() {
         this.reportEventListener.remove();
+        this.hideBlurSubscription.remove();
+        this.showBlurSubscription.remove();
+        this.setReportTab.remove();
+    }
+
+    setTab() {
+        const that = this;
+        setTimeout(() => {
+            that.props.changeAppState({
+                currentTab: 'Report'
+            })
+        }, 100);
     }
 
     handleSelect(event) {
@@ -79,6 +98,17 @@ class Report extends Component {
             this.setState({...this.state, selectedEntry: null})
         } else {
             this.setState({...this.state, selectedEntry: JSON.stringify(entry)})
+        }
+    }
+
+    /**
+     * 模糊相关操作
+     */
+    blurAction(type) {
+        if (type == '1') {
+            this.props.changeState({viewRef: findNodeHandle(this.refs.blurView)});
+        } else {
+            this.props.changeState({viewRef: null});
         }
     }
 
@@ -93,6 +123,32 @@ class Report extends Component {
                 (this.props.state.defaultDate) : (this.props.state.selectedYear + '' +
             this.props.state.selectedMonth)
         );
+    }
+
+    /**
+     * 日期确定事件触发
+     * @param pickedValue
+     * @param pickedIndex
+     */
+    datePickerConfirmPress(pickedValue, pickedIndex) {
+        var yearFormat;
+        var monthFormat;
+        var selectedDateStr;
+        yearFormat = pickedValue[0].substring(0, 4);
+        if (pickedValue[1].length == 2) {
+            monthFormat = '0' + pickedValue[1].substring(0, 1);
+        } else {
+            monthFormat = pickedValue[1].substring(0, 2);
+        }
+        selectedDateStr = yearFormat + '-' + monthFormat;
+        this.props.changeState({
+            selectedYear: pickedValue[0],
+            selectedMonth: pickedValue[1],
+            selectedDateStr: selectedDateStr,
+            name: selectedDateStr,
+            showPickerShadow: false
+        });
+        this._show(selectedDateStr, this.props.state.seriesName);
     }
 
     /**
@@ -118,24 +174,7 @@ class Report extends Component {
             pickerTitleText: '',
             pickerFontSize: 17,
             onPickerConfirm: (pickedValue, pickedIndex) => {
-                var yearFormat;
-                var monthFormat;
-                var selectedDateStr;
-                yearFormat = pickedValue[0].substring(0, 4);
-                if (pickedValue[1].length == 2) {
-                    monthFormat = '0' + pickedValue[1].substring(0, 1);
-                } else {
-                    monthFormat = pickedValue[1].substring(0, 2);
-                }
-                selectedDateStr = yearFormat + '-' + monthFormat;
-                this.props.changeState({
-                    selectedYear: pickedValue[0],
-                    selectedMonth: pickedValue[1],
-                    selectedDateStr: selectedDateStr,
-                    name: selectedDateStr,
-                    showPickerShadow: false
-                });
-                this._show(selectedDateStr, this.props.state.seriesName);
+                this.datePickerConfirmPress(pickedValue, pickedIndex);
             },
             onPickerCancel: (pickedValue, pickedIndex) => {
                 this.props.changeState({showPickerShadow: false});
@@ -301,10 +340,11 @@ class Report extends Component {
                             justifyContent: 'center',
                             borderWidth: ScreenUtil.scaleSize(1),
                             borderColor: '#DEDEDE',
-                            borderRadius: ScreenUtil.scaleSize(6)
+                            borderRadius: ScreenUtil.scaleSize(6),
+                            backgroundColor: '#F1F1F1'
                         }}>
                             <Text style={{
-                                fontSize: ScreenUtil.setSpText(9),
+                                fontSize: ScreenUtil.setSpText(8),
                                 color: '#666666',
                                 marginLeft: ScreenUtil.scaleSize(20)
                             }}>
@@ -323,11 +363,12 @@ class Report extends Component {
                             width: ScreenUtil.scaleSize(200),
                             alignItems: 'flex-start',
                             justifyContent: 'center',
-                            borderRadius: ScreenUtil.scaleSize(6)
+                            borderRadius: ScreenUtil.scaleSize(6),
+                            backgroundColor: '#F1F1F1'
                         }
                         }
                         textStyle={{
-                            fontSize: ScreenUtil.setSpText(9), color: '#666666',
+                            fontSize: ScreenUtil.setSpText(8), color: '#666666',
                             marginLeft: ScreenUtil.scaleSize(20)
                         }}
                         showsVerticalScrollIndicator={false}
@@ -365,7 +406,7 @@ class Report extends Component {
                 </View>
                 <View style={styles.estimateContainer}>
                     <View style={styles.estimateTitle}>
-                        <Text style={{color: '#666666', fontSize: ScreenUtil.setSpText(9)}}>{this._showText()}</Text>
+                        <Text style={{color: '#666666', fontSize: ScreenUtil.setSpText(8)}}>{this._showText()}</Text>
                     </View>
                     <View style={styles.rowHeaderText}>
                         <Text style={styles.estimateTypeText}>{Message.REPORT_REIMBURSEMENT_TYPE}</Text>
@@ -392,17 +433,30 @@ class Report extends Component {
                         }
                     }/>
                 <CommonLoading isShow={this.props.state.isLoading}/>
-                <Header
-                    titleText={Message.REPORT}
-                    thisComponent={this}
-                    showBackIcon={false}
-                />
-                <FlatList
-                    style={{flex: 1}}
-                    data={[this.props.state.showFlatList]}
-                    ListHeaderComponent={this._header}
-                    renderItem={this._renderItem}
-                />
+                <BlurView
+                    style={{
+                        position: "absolute",
+                        top: 0, left: 0, bottom: 0, right: 0,
+                        flex: 1,
+                        zIndex: (this.props.state.viewRef != null ? 300 : -99)
+                    }}
+                    viewRef={this.props.state.viewRef}
+                    blurType="light"
+                    blurAmount={10}/>
+
+                <View ref="blurView" style={{flex: 1, backgroundColor: '#F3F3F3'}}>
+                    <Header
+                        titleText={Message.REPORT}
+                        thisComponent={this}
+                        showBackIcon={false}
+                    />
+                    <FlatList
+                        style={{flex: 1}}
+                        data={[this.props.state.showFlatList]}
+                        ListHeaderComponent={this._header}
+                        renderItem={this._renderItem}
+                    />
+                </View>
             </View>
         );
     }
@@ -421,7 +475,8 @@ function mapDispatchToProps(dispatch) {
         queryReimbursementAmount: queryReimbursementAmount,
         loadReimbursementTotalAmountProportion: loadReimbursementTotalAmountProportion,
         loadChartData: loadChartData,
-        changeToReportTab
+        changeToReportTab: changeToReportTab,
+        changeAppState: changeAppState,
     }, dispatch);
 }
 
@@ -429,7 +484,8 @@ export default connect(mapStateToProps, mapDispatchToProps)(Report);
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1
+        flex: 1,
+        backgroundColor: '#F3F3F3'
     },
     icon: {
         width: 26,
@@ -440,7 +496,7 @@ const styles = StyleSheet.create({
         marginLeft: ScreenUtil.scaleSize(30),
         marginTop: ScreenUtil.scaleSize(20),
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     quarterCompletedReimbursementText: {
@@ -449,7 +505,7 @@ const styles = StyleSheet.create({
         top: ScreenUtil.scaleSize(80),
         alignSelf: 'center',
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     quarterCompletedReimbursement: {
@@ -458,7 +514,7 @@ const styles = StyleSheet.create({
         top: ScreenUtil.scaleSize(140),
         alignSelf: 'center',
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     reimbursementTotalLabelView: {
@@ -472,7 +528,7 @@ const styles = StyleSheet.create({
     quarterReimbursementTotalText: {
         color: '#FFFFFF',
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     quarterReimbursementView: {
@@ -486,7 +542,7 @@ const styles = StyleSheet.create({
     quarterReimbursementTotal: {
         color: '#FFFFFF',
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     inAuditLabelView: {
@@ -500,7 +556,7 @@ const styles = StyleSheet.create({
     inAuditText: {
         color: '#FFFFFF',
         backgroundColor: 'transparent',
-        fontSize: ScreenUtil.setSpText(10),
+        fontSize: ScreenUtil.setSpText(9.3),
         fontWeight: 'bold'
     },
     inAuditView: {
@@ -537,14 +593,7 @@ const styles = StyleSheet.create({
         borderColor: '#DEDEDE',
         borderRadius: ScreenUtil.scaleSize(6)
     },
-    selectIcon: {
-        width: ScreenUtil.scaleSize(16),
-        height: ScreenUtil.scaleSize(8),
-        resizeMode: 'contain',
-        marginLeft: ScreenUtil.scaleSize(10),
-    },
     estimateContainer: {
-        marginTop: ScreenUtil.scaleSize(20),
         backgroundColor: '#FFFFFF',
         flex: 1
     },
@@ -565,19 +614,19 @@ const styles = StyleSheet.create({
         flex: 1,
         color: '#666666',
         textAlign: 'left',
-        fontSize: ScreenUtil.setSpText(9)
+        fontSize: ScreenUtil.setSpText(8)
     },
     estimateAmountText: {
         flex: 1,
         color: '#666666',
         textAlign: 'center',
-        fontSize: ScreenUtil.setSpText(9)
+        fontSize: ScreenUtil.setSpText(8)
     },
     estimateProportionText: {
         flex: 1,
         color: '#666666',
         textAlign: 'center',
-        fontSize: ScreenUtil.setSpText(9)
+        fontSize: ScreenUtil.setSpText(8)
     },
     rowEstimateItem: {
         flexDirection: 'row',
@@ -593,7 +642,7 @@ const styles = StyleSheet.create({
         marginLeft: ScreenUtil.scaleSize(20)
     },
     highlightedRowText: {
-        fontSize: ScreenUtil.setSpText(9),
+        fontSize: ScreenUtil.setSpText(8),
         color: 'black',
         backgroundColor: 'white',
         textAlignVertical: 'center',

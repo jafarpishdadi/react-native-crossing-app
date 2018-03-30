@@ -200,9 +200,9 @@ export const operateCancel = (requestData) => {
             isLoading: true
         }))
         return HttpUtil.postJson(API.OPERATE_CANCEL, requestData, dispatch, function (ret, status) {
-            /*dispatch(changeState({
+            dispatch(changeState({
              isLoading: false
-             }))*/
+             }))
             if (status) {
                 if (ret.status) {
                     Util.showToast(Message.ACTION_SUCCESS);
@@ -216,14 +216,7 @@ export const operateCancel = (requestData) => {
                     dispatch(resetApplicationList());
                 } else {
                     Util.showToast(ret.message);
-                    dispatch(changeState({
-                        isLoading: false
-                    }))
                 }
-            } else {
-                dispatch(changeState({
-                    isLoading: false
-                }))
             }
         })
     }

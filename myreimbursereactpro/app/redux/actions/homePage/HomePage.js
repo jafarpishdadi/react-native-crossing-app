@@ -1,18 +1,18 @@
 /**
  * Created by sky.qian on 10/27/2017.
  */
-import {Platform,NativeModules} from 'react-native';
-import * as types from '../../../constant/ActionTypes';
-import HttpUtil from '../../../network/HttpUtil';
-import API from '../../../utils/API';
-import Util from '../../../utils/Util';
-import Message from '../../../constant/Message';
-import {changeState as changeMainScreenState} from '../mainScreen/MainScreen';
-import Store from 'react-native-simple-store';
-import {loadInvoiceListDataReimbursement} from '../invoice/Invoice';
-import {loadData as loadReportData} from '../report/Report';
-import {loadData as loadMineData} from '../mine/Mine';
+import {Platform, NativeModules} from "react-native";
+import * as types from "../../../constant/ActionTypes";
+import HttpUtil from "../../../network/HttpUtil";
+import API from "../../../utils/API";
+import Util from "../../../utils/Util";
+import Message from "../../../constant/Message";
+import Store from "react-native-simple-store";
+import {loadInvoiceListDataReimbursement} from "../invoice/Invoice";
+import {loadData as loadReportData} from "../report/Report";
+import {loadData as loadMineData} from "../mine/Mine";
 var UpdateAppModule = NativeModules.UpdateAppModule;
+var RNBridgeModule = NativeModules.RNBridgeModule;
 
 export const changeState = (state) => {
 	return {
@@ -37,7 +37,7 @@ export const refreshData = () => {
 }
 
 export const loadData = (loading) => {
-	return dispatch => {
+	return (dispatch,getState) => {
 		dispatch(changeState({
 			isLoading: loading,
 		}))
@@ -61,6 +61,7 @@ export const changeCompany = (item) => {
 									dispatch(changeState({
 										companyOpen: false,
 										isLoading: true,
+										showOtherMessage: true,
 									}));
 									//避免其他接口还未请求又切换企业，导致还未请求的接口报token失效
 									setTimeout(() => {
@@ -91,15 +92,25 @@ export const changeCompany = (item) => {
 	}
 }
 
-export const loadCompanyData = () => {
+export const loadCompanyData = (single) => {
 	return dispatch => {
 		return HttpUtil.postJson(API.GET_COMPANY, {}, dispatch, function(ret, status) {
-			dispatch(loadMessageData())
+			if (!single) {
+				dispatch(loadMessageData())
+			}
 			if (status) {
 				if (ret.status) {
+					let hasOtherMessage = false;
+					for (let item of ret.data) {
+						if (!item.isCurrent && item.messageCount > 0) {
+							hasOtherMessage = true;
+							break;
+						}
+					}
 					dispatch(changeState({
 						companyArr: ret.data,
 						selectHeightMax: ret.data.length * 81,
+						hasOtherMessage: hasOtherMessage,
 					}))
 
 				} else {
@@ -112,13 +123,15 @@ export const loadCompanyData = () => {
 
 export const loadMessageData = () => {
 	return dispatch => {
-		return HttpUtil.postJson(API.GET_UNREAD_MESSAGE_COUNT, {}, dispatch, function(ret, status) {
+		//TODO
+		return HttpUtil.postJson(API.GET_SUBSCRIPT, {}, dispatch, function(ret, status) {
 			dispatch(loadApplicationTotalData())
 			if (status) {
 				if (ret.status) {
 					dispatch(changeState({
-						unreadMessageCount: parseInt(ret.data),
+						unreadMessageCount: parseInt(ret.data.userSubscriptNum),
 					}));
+					RNBridgeModule.updateBadge(ret.data.appSubscriptNum)
 				} else {
 					Util.showToast(ret.message);
 				}
@@ -129,7 +142,7 @@ export const loadMessageData = () => {
 
 export const loadApplicationData = () => {
 	return (dispatch, getState) => {
-		return HttpUtil.postJson(API.GET_APPLICATION_LIST, {isAppHome: 1}, dispatch, function(ret, status) {
+		return HttpUtil.postJson(API.GET_APPLICATION_LIST_FOR_HOME, {}, dispatch, function(ret, status) {
 			dispatch(changeState({
 				isLoading: false,
 				isRefreshing: false,
@@ -151,7 +164,6 @@ export const loadApplicationData = () => {
 			}
 
 			if(!getState().HomePage.upgradeChecked){
-				//todo 暂时注掉版本更新
 				dispatch(checkUpgrade());
 			}
 
@@ -162,6 +174,32 @@ export const loadApplicationData = () => {
 				}))
 				dispatch(loadInvoiceListDataReimbursement('Y'));
 				dispatch(loadReportData());
+			}
+		})
+	}
+}
+
+export const refreshApplicationData = () => {
+	return (dispatch) => {
+		return HttpUtil.postJson(API.GET_APPLICATION_LIST_FOR_HOME, {}, dispatch, function(ret, status) {
+			dispatch(changeState({
+				isLoading: false,
+				isRefreshing: false,
+			}))
+			if (status) {
+				if (ret.status) {
+					if (ret.data != null) {
+						dispatch(changeState({
+							reimbursementList: ret.data,
+						}))
+					} else {
+						dispatch(changeState({
+							reimbursementList: [],
+						}))
+					}
+				} else {
+					Util.showToast(ret.message);
+				}
 			}
 		})
 	}
@@ -188,12 +226,70 @@ export const loadApplicationTotalData = () => {
 export const loadApprovalTotalData = () => {
 	return dispatch => {
 		return HttpUtil.postJson(API.GET_APPROVAL_TOTAL, {}, dispatch, function(ret, status) {
-			dispatch(loadApplicationData());
+			dispatch(loadTravelTotalData());
 			if (status) {
 				if (ret.status) {
 					dispatch(changeState({
 						approvalCount: ret.data.totalNum ? ret.data.totalNum : 0,
 						approvalAmount:ret.data.totalAmount ? parseFloat(ret.data.totalAmount).toFixed(2) + '' : 0.00 + '',
+					}));
+				} else {
+					Util.showToast(ret.message);
+				}
+			}
+		})
+	}
+}
+
+export const loadTravelTotalData = () => {
+	return dispatch => {
+		return HttpUtil.postJson(API.GET_TRAVEL_APPLY_NUM, {}, dispatch, function(ret, status) {
+			dispatch(loadLoanTotalData());
+			if (status) {
+				if (ret.status) {
+					dispatch(changeState({
+						travelCount: ret.data.num ? ret.data.num : 0,
+					}));
+				} else {
+					Util.showToast(ret.message);
+				}
+			}
+		})
+	}
+}
+
+export const loadLoanTotalData = () => {
+	return dispatch => {
+		return HttpUtil.postJson(API.GET_BORROW_AMOUNT_NUM, {}, dispatch, function(ret, status) {
+			dispatch(loadApplicationData());
+			if (status) {
+				if (ret.status) {
+					let totalAmount = ret.data.totalAmount;
+					let notAmount = ret.data.notAmount;
+
+					if (ret.data.totalAmount) {
+						if (ret.data.totalAmount == '0') {
+							totalAmount = 0 + '.00';
+						} else {
+							totalAmount = parseFloat(ret.data.totalAmount).toFixed(2) + '';
+						}
+					}  else {
+						totalAmount = 0 + '.00';
+					}
+
+					if (ret.data.notAmount) {
+						if (ret.data.notAmount == '0') {
+							notAmount = 0 + '.00';
+						} else {
+							notAmount = parseFloat(ret.data.notAmount).toFixed(2) + '';
+						}
+					}  else {
+						notAmount = 0 + '.00';
+					}
+					dispatch(changeState({
+						loanCount: ret.data.num ? ret.data.num : 0,
+						loanAmount: totalAmount,
+						loanNoPayAmount: notAmount,
 					}));
 				} else {
 					Util.showToast(ret.message);
@@ -217,11 +313,37 @@ export const checkUpgrade = () => {
 					}))
 					UpdateAppModule.check(ret.data.versionNo, (resultCode)=> {
 						if (resultCode == '1') {
-							//不强制更新  仅提示更新
-							dispatch(changeState({
-								versionData:ret.data,
-								showUpgrade: true,
-							}))
+							if(Platform.OS == 'ios'){
+								if (ret.data.isMust == '1') {
+									dispatch(changeState({
+										versionData: ret.data,
+										isLoading: false,
+										iosForceUpgrade: true,
+									}))
+								} else {
+									//不强制更新  仅提示更新
+									dispatch(changeState({
+										versionData: ret.data,
+										isLoading: false,
+										showUpgrade: true,
+									}))
+								}
+							}else{
+								if(ret.data.isMust == '1'){
+									// if(ret.data.isMust == '0'){
+									dispatch(changeState({
+										forceUpgrade: true,
+										isLoading: false,
+									}))
+									UpdateAppModule.forceUpdate(ret.data.versionAddress);
+								}else{
+									dispatch(changeState({
+										versionData:ret.data,
+										showUpgrade: true,
+									}))
+								}
+							}
+
 						}
 					});
 				}
@@ -236,5 +358,24 @@ export const checkUpgrade = () => {
 export const setMessageCount = (msgCnt) => {
 	return (dispatch) => {
 		dispatch(changeState({unreadMessageCount:msgCnt}));
+	}
+}
+
+/**
+ * 上传百度用户channelId到后台与用户绑定
+ */
+export const uploadBPushData = (channelId) => {
+	return (dispatch) => {
+		var request = {operateSystem:'android',channelId:channelId};
+		if (Platform.OS == 'ios') {
+			request = {operateSystem:'ios',channelId:channelId};
+		}
+		return HttpUtil.postJson(API.UPSERT_CHANNEL_ID, request, dispatch, function(ret, status) {
+			if (status) {
+				if (ret.status) {
+					//向百度云注册或者调用本接口保存失败不用弹出任何信息，影响用户的正常使用
+				}
+			}
+		})
 	}
 }

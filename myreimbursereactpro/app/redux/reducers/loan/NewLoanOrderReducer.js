@@ -26,6 +26,13 @@ const initialState = {
     loanOrderAttachmentURLList: [],    //删除的借款单附件URL集合
     saveModalVisible: false,            //是否展示保存提示框
     showNoPermissionDialog: false,   //是否显示提示授予麦克风权限的对话框
+    copyPersonList: [],
+    borrowNo: '',       //借款单编号
+    source: '',     //页面来源
+    applyStatus: '',        //借款单状态
+
+    selectionStart: 0,               //光标选择开始位置
+    selectionEnd: 0,                  //光标选择结束
 }
 
 const  newLoanOrderReducer = (state = initialState, action) => {

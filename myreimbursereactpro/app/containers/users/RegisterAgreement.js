@@ -22,6 +22,7 @@ import {back} from '../../redux/actions/navigator/Navigator';
 import Header from "./../common/CommonHeader";
 import Message from "../../constant/Message";
 import ScreenUtil from "../../utils/ScreenUtil";
+import SafeAreaView from "react-native-safe-area-view";
 
 class RegisterAgreement extends Component {
 
@@ -40,7 +41,7 @@ class RegisterAgreement extends Component {
 
     render () {
         return (
-            <View style={{flex:1, backgroundColor: '#F3F3F3'}}>
+            <SafeAreaView style={{flex:1, backgroundColor: 'white'}}>
                 <Header
                     titleText={Message.REGISTER_AGREEMENT}
                     thisComponent={this}
@@ -123,7 +124,7 @@ class RegisterAgreement extends Component {
                     <Text style={styles.content}>9.2  用户正确提交注册或登录程序所需的资料并确认本协议，通过注册或登录程序后，本协议在大象公司所提供的服务与用户之间成立并生效。本服务协议具有合同法上的法律效力。协议有效期从用户同意本协议并通过注册或登录程序开始，至注销用户账号或服务终止时结束。</Text>
                     <Text style={styles.content}>9.3  用户已经仔细阅读本协议内容，并理解其中的法律含义。若用户在阅读或使用本协议是有任何问题，或对本协议或服务内容有任何意见或建议，可与大象公司联系，用户将会得到必要的帮助。</Text>
                 </ScrollView>
-            </View>
+            </SafeAreaView>
         )
     }
 }

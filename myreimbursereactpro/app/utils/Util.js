@@ -6,8 +6,12 @@ import Toast from "react-native-root-toast";
 import Message from '../constant/Message';
 import Area from './area.json';
 import {loadData as loadReportData} from '../redux/actions/report/Report';
+import {deviceWidth,deviceHeight} from "../utils/ScreenUtil";
+
 const yearStart = 1950;
 const yearEnd = 2050;
+const X_WIDTH = 375;
+const X_HEIGHT = 812;
 export default class Util {
 
     static YEAR_START = yearStart;
@@ -217,14 +221,13 @@ export default class Util {
      * @returns {*} 返回列表单行title
      */
     static getReimbursementTitle(item) {
-        let formDesc = this.jsonParse(item.formDesc);
         switch (item.formState) {
             case '0':
-                return formDesc.applyTypeName + item.formTypeName;
+                return item.formTypeName;
             default:
                 let createTimeStr = item.createTimeStr;
                 let date = createTimeStr.substring(0, 11);
-                return date + ' ' + formDesc.applyTypeName + item.formTypeName;
+                return date + ' ' + item.formTypeName;
         }
     }
 
@@ -501,16 +504,9 @@ export default class Util {
         })
     }
 
-    //差旅费报销列表字段解析
-    static parseReimbursementLabelJsonForTrip(name) {
-        const str = '{"expenseDesc":"报销说明:","applyTypeName":"报销类别:","expenseDname":"部门:","amount":"报销金额:"}';
-        const json = JSON.parse(str);
-        return json[name];
-    }
-
     //报销列表字段解析
     static parseReimbursementLabelJson(name) {
-        const str = '{"expenseDesc":"报销事由:","applyTypeName":"报销类别:","expenseDname":"部门:","amount":"报销金额:"}';
+        const str = '{"expenseDesc":"报销事由:","applyTypeName":"报销类别:","expenseDname":"部门:","amount":"报销金额:","borrowDname":"部门:","borrowAmount":"借款金额:","borrowDesc":"借款事由:","planCost":"预计花费:","targetCity":"目的城市:","travelApplyDesc":"出差事由:","travelApplyDname":"部门:"}';
         const json = JSON.parse(str);
         return json[name];
     }
@@ -561,7 +557,7 @@ export default class Util {
             if (!isNaN(number) && parseFloat(number) >= 0) {
                 const arr = number.split('.');
                 if (parseFloat(arr[0]) < 10000000) {
-                    if(arr[1]) {
+                    if (arr[1]) {
                         return arr[1].length <= 2;
                     } else {
                         return true;
@@ -637,7 +633,18 @@ export default class Util {
     /**
      * 切换到报表tab时，加载刷新报表数据
      */
-    static loadData () {
+    static loadData() {
         loadReportData();
+    }
+
+    /**
+     * 判断是否为iphoneX
+     */
+    static isIphoneX() {
+        return (
+            Platform.OS === 'ios' &&
+            ((deviceHeight === X_HEIGHT && deviceWidth === X_WIDTH) ||
+            (deviceHeight === X_WIDTH && deviceWidth === X_HEIGHT))
+        );
     }
 }

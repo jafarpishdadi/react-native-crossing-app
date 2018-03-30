@@ -10,10 +10,10 @@ const initialState = {
     showLoading: false,
     showPickerShadow: false,  //是否显示选择器阴影
     saveModalVisible: false,            //是否保存提示框
-    titleText: "",
+    titleText: Message.NEW_TRAVEL_APPLY_TITLE,
 
-    expenseDepartmentName: '',              //选中的部门
-    expenseDepartmentId: '',    //部门ID
+    departmentName: '',              //选中的部门
+    departmentId: '',    //部门ID
     organizationList: [],                   //部门列表
     targetCity: '',                          //目的城市
     cause: "",                              //出差事由
@@ -23,6 +23,7 @@ const initialState = {
     expectedCostAmount: '',      //预计花费金额
     peerPerple: "",   //同行人
     copyPersonList: [],   //抄送人集合
+    peerPersonList: [],   //同行人集合
     attachmentList: [],     //附件列表
     attachmentIDList: [],     //删除的申请单附件ID集合
     attachmentURLList: [],    //删除的申请单附件URL集合
@@ -41,6 +42,24 @@ const initialState = {
     promptType: '',             //提示类型
     promptMsg: '',              //提示内容
     showPrompt: false,          //保存结果提示
+
+    isModalBoxOpen: false,
+    isShowCalendar: true,   //是否显示日历列表，默认显示日历列表，不显示时分滚轮
+    startDateSelected:'',   //开始时间选择日期(格式yyyy-mm-dd)
+    endDateSelected:'',     //结束时间选择日期(格式yyyy-mm-dd)
+    startTimeSelected: '',       //开始时间时分选择
+    endTimeSelected:'',          //结束时间时分选择
+    isStartDateTimeFlag: false,
+    isEndDateTimeFlag: false,
+    startHour: '',  //开始时间小时数
+    startMinute: '',//开始时间分钟数
+    endHour: '',    //结束时间小时数
+    endMinute: '',  //结束时间分钟数
+    calendarDate: '',
+    targetCityTextInputHeight: 80, //目的城市高度
+
+    selectionStart: 0,               //光标选择开始位置
+    selectionEnd: 0,                  //光标选择结束
 }
 
 const NewTravelApplyReducer = (state = initialState, action) => {
@@ -48,13 +67,15 @@ const NewTravelApplyReducer = (state = initialState, action) => {
         case types.NEW_TRAVEL_APPLY_CHANGE_STATE:
             return {...state, ...action.state}
         case types.NEW_TRAVEL_APPLY_INIT_DATA:
-            return {...initialState};
-        case types.SELECT_COPY_PERSON_LIST: {
             return {
-                ...state,
-                copyPersonList: action.copyPersonList.selectData
+                ...initialState,
+                organizationList: [],
+                copyPersonList: [],
+                peerPersonList: [],
+                attachmentList: [],
+                attachmentIDList: [],
+                attachmentURLList: [],
             }
-        }
         default:
             return state;
     }

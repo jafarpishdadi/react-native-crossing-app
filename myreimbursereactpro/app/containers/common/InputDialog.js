@@ -19,6 +19,8 @@ import {
 import ScreenUtil, {deviceHeight, deviceWidth} from "../../utils/ScreenUtil";
 import Message from '../../constant/Message';
 
+lastPressed = null;
+
 export default class InputDialog extends React.Component {
 	static propTypes = {
 		backgroundClick: PropTypes.func,   // 阴影部分点击事件
@@ -108,20 +110,24 @@ export default class InputDialog extends React.Component {
 
 	//右按钮点击事件
 	_rightClick() {
-		if (this.props.onBlur) {
-			this.props.onBlur(this.props.thisComponent);
-		}    //修复ios对话框不回到原来位置
-		var that = this;
-		setTimeout(() => {
-			if (!that.props.showDialogOpen) {
-				if (that.props.rightClick) {
+		const dateNow = (new Date()).valueOf();
+		if (!lastPressed || lastPressed + 500 < dateNow) {
+			if (this.props.onBlur) {
+				this.props.onBlur(this.props.thisComponent);
+			}    //修复ios对话框不回到原来位置
+			var that = this;
+			setTimeout(() => {
+				if (!that.props.showDialogOpen) {
+					if (that.props.rightClick) {
+						that.props.rightClick(that.props.thisComponent);
+					}
+					that._backgroundClick();
+				} else {
 					that.props.rightClick(that.props.thisComponent);
 				}
-				that._backgroundClick();
-			} else {
-				that.props.rightClick(that.props.thisComponent);
-			}
-		}, 300);
+			}, 300);
+		}
+		lastPressed = dateNow;
 	}
 
 	render() {

@@ -37,6 +37,7 @@ import {
 } from "../../redux/actions/travelApply/SelectTravelApply"
 import {changeState as changeAppState} from "../../redux/actions/App";
 import Util from '../../utils/Util';
+import SafeAreaView from "react-native-safe-area-view";
 
 var RNBridgeModule = NativeModules.RNBridgeModule;
 
@@ -118,7 +119,7 @@ class SelectTravelApply extends Component {
 
     render() {
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <CommonLoading isShow={this.props.state.isLoading}/>
                 <Header
                     titleText={Message.SELECT_TRAVEL_APPLY_TITLE}
@@ -146,7 +147,7 @@ class SelectTravelApply extends Component {
 
                     </FlatList>
                 </View>
-            </View>
+            </SafeAreaView>
         )
     }
 }

@@ -6,6 +6,7 @@ import React, {Component} from "react";
 import PropTypes from 'prop-types';
 import {View, Text, Image, StyleSheet, StatusBar, Platform, TouchableOpacity} from "react-native";
 import ScreenUtil from "../../utils/ScreenUtil";
+import Util from "../../utils/Util";
 
 export default class Header extends React.Component {
 
@@ -154,8 +155,8 @@ export default class Header extends React.Component {
 const styles = StyleSheet.create({
     menuContainer: {
         flexDirection: 'row',
-        paddingTop: Platform.OS === 'ios' ? ScreenUtil.scaleSize(36) : 0,  // 处理iOS状态栏
-        height: (Platform.OS === 'ios') ? ScreenUtil.scaleSize(128) : ScreenUtil.scaleSize(92),
+        paddingTop: Platform.OS === 'ios' ? ScreenUtil.scaleSize((Util.isIphoneX() ? 0 : 36)) : 0,  // 处理iOS状态栏
+        height: (Platform.OS === 'ios') ? ScreenUtil.scaleSize((Util.isIphoneX() ? 92 : 128)) : ScreenUtil.scaleSize(92),
         backgroundColor: '#ffffff',
         alignItems: 'center',
         borderBottomWidth: ScreenUtil.scaleSize(1),
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
     },
     backIconBox: {
         width: ScreenUtil.scaleSize(50),
-        height: (Platform.OS === 'ios') ? ScreenUtil.scaleSize(128) : ScreenUtil.scaleSize(92),
+        height: (Platform.OS === 'ios') ? ScreenUtil.scaleSize((Util.isIphoneX() ? 92 : 128)) : ScreenUtil.scaleSize(92),
         justifyContent: 'center',
         paddingLeft: ScreenUtil.scaleSize(10),
     },
